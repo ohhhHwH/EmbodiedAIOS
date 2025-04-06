@@ -113,6 +113,7 @@ class GraspServer(Node):
         pos_constraint.target_point_offset.x = 0.0
         pos_constraint.target_point_offset.y = 0.0
         pos_constraint.target_point_offset.z = 0.0
+        # ori_constraint.orientation.w = 1.0
 
         region = SolidPrimitive()
         region.type = SolidPrimitive.BOX
