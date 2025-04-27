@@ -22,3 +22,7 @@ install/
 mobileclip_blt.pt
 yolo11x-seg.pt
 *.pt
+Log/OrbbecSDK.log*.txt
+src/Log/OrbbecSDK.log*.txt
+Log/OrbbecSDK.log*.txt
+src/Log/*.log*.txt
