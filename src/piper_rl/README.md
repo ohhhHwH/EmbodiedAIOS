@@ -68,8 +68,8 @@ ros2 launch piper_moveit_config_v4 demo.launch.py
 ``` 
 （后来发现不用moveit貌似还是照样跑仿真，很抽象, 这里面的控制器的关系已经不想去厘清了，毁灭吧）
 
+![gazebo + moveit](./gazebo+moveit.png)
 
-!(gazebo + moveit)[./gazebo+moveit.png]
 ### 2. 训练强化学习策略
 自行更换路径
 ```bash
