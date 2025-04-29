@@ -78,7 +78,7 @@ pip3 install --force --no-cache-dir torchaudio-2.6.0-cp310-cp310-linux_aarch64.w
 ```bash
 python3
 >>> import torch
->>> print(torch.__version__)  # 应输出 '2.6.0'
+>>> print(torch.__version__)  # 应输出 '2.3.0'
 >>> print(torch.cuda.is_available())  # 应输出 True
 >>> print(torch.cuda.get_device_name(0))  # 应输出 'Orin'
 >>> import torchvision
