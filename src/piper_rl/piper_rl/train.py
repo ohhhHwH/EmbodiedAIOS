@@ -21,13 +21,13 @@ def train():
     )
 
     checkpoint_callback = CheckpointCallback(
-        save_freq=5000,
+        save_freq=50000,
         save_path="./ppo_models/",
         name_prefix="piper_rl"
     )
 
     model.learn(
-        total_timesteps=50000,
+        total_timesteps=200000,
         callback=checkpoint_callback
     )
 
