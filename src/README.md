@@ -10,7 +10,7 @@
 > ⚠️ **注意版本匹配！**  
 > 如图所示，当前手册版本为 **36.4.3**，请务必使用对应版本的手册与工具包，不同版本间存在关键性操作差异，即便是相近版本也不可忽略。
 
-![版本确认](assert/1.png)
+![版本确认](https://github.com/HustWolfzzb/EmbodiedAIOS/blob/main/src/assert/1.png)
 
 ---
 
@@ -18,12 +18,12 @@
 
 在手册多个位置均提供 SDK 下载链接。可通过如下方式跳转获取：
 
-![跳转位置1](assert/2.png)  
-![跳转位置2](assert/3.png)
+![跳转位置1](https://github.com/HustWolfzzb/EmbodiedAIOS/blob/main/src/assert/2.png)  
+![跳转位置2](https://github.com/HustWolfzzb/EmbodiedAIOS/blob/main/src/assert/3.png)
 
 请下载下图中圈选的 **三个软件包**：
 
-![需下载的软件包](assert/4.png)
+![需下载的软件包](https://github.com/HustWolfzzb/EmbodiedAIOS/blob/main/src/assert/4.png)
 
 ---
 
@@ -102,8 +102,8 @@ cp kernel-devicetree/generic-dts/dtbs/* <install-path>/Linux_for_Tegra/kernel/dt
 > 请根据 Quick Start 指南中的指令操作。  
 > 推荐使用以下方法进入 **Recovery 模式**：
 
-![进入Recovery方式1](assert/5.png)  
-![进入Recovery方式2](assert/6.png)
+![进入Recovery方式1](https://github.com/HustWolfzzb/EmbodiedAIOS/blob/main/src/assert/5.png)  
+![进入Recovery方式2](https://github.com/HustWolfzzb/EmbodiedAIOS/blob/main/src/assert/6.png)
 
 在 **R36.4.3** 版本下，执行以下命令进行烧录：
 

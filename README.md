@@ -120,7 +120,7 @@
 
 
 
-![机械臂与深度相机静态位置](./arm_camera_connector.jpg)
+![机械臂与深度相机静态位置](https://github.com/HustWolfzzb/EmbodiedAIOS/blob/main/arm_camera_connector.jpg)
 
 ## ✅ 启动流程建议
 
@@ -174,7 +174,7 @@
 
 ---
 
-![moveit界面](./moveit.jpg)
+![moveit界面](https://github.com/HustWolfzzb/EmbodiedAIOS/blob/main/moveit.jpg)
 
 
 ## 🧪 测试建议
@@ -185,7 +185,7 @@
 
 ---
 
-![静态布置相机视角](./camera.jpg)
+![静态布置相机视角](https://github.com/HustWolfzzb/EmbodiedAIOS/blob/main/camera.jpg)
 
 ## 🧩 常见问题排查
 
