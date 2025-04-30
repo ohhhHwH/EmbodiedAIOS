@@ -1,8 +1,121 @@
-SDK Manager给你装的torch是不可用的，所以还得自己装。以下是针对 Jetson Orin AGX 上安装支持 GPU 加速的 PyTorch（适用于 JetPack 6.2 和 CUDA 12.6）的详细指南。 ([PyTorch and TorchVision for Jetpack 6.2 - NVIDIA Developer Forums](https://forums.developer.nvidia.com/t/pytorch-and-torchvision-for-jetpack-6-2/325257?utm_source=chatgpt.com))
+# 🚀 一、Jetson AGX Orin 内核定制与烧录指南（基于 R36.4.3）
 
 ---
 
-## 🚀 Jetson Orin AGX 上安装 GPU 加速的 PyTorch（JetPack 6.2）
+## 📚 开发手册链接
+
+[NVIDIA 官方开发者手册（R36.4.3）](https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/index.html)
+
+
+> ⚠️ **注意版本匹配！**  
+> 如图所示，当前手册版本为 **36.4.3**，请务必使用对应版本的手册与工具包，不同版本间存在关键性操作差异，即便是相近版本也不可忽略。
+
+![版本确认](assert/1.png)
+
+---
+
+## 📦 获取 SDK 与源码包
+
+在手册多个位置均提供 SDK 下载链接。可通过如下方式跳转获取：
+
+![跳转位置1](assert/2.png)  
+![跳转位置2](assert/3.png)
+
+请下载下图中圈选的 **三个软件包**：
+
+![需下载的软件包](assert/4.png)
+
+---
+
+## 📁 解压预编译文件
+
+依次执行以下命令完成预编译文件的准备：
+
+```bash
+tar xf ${L4T_RELEASE_PACKAGE}
+sudo tar xpf ${SAMPLE_FS_PACKAGE} -C Linux_for_Tegra/rootfs/
+cd Linux_for_Tegra/
+sudo ./tools/l4t_flash_prerequisites.sh
+sudo ./apply_binaries.sh
+```
+
+---
+
+## 🔧 开始内核定制
+
+> 按开发手册步骤操作，如下为关键命令汇总：
+
+```bash
+# 建议国内用户手动解压源码包
+tar xf public_sources.tbz2 -C <install-path>/Linux_for_Tegra/..
+
+cd <install-path>/Linux_for_Tegra/source
+tar xf kernel_src.tbz2
+tar xf kernel_oot_modules_src.tbz2
+tar xf nvidia_kernel_display_driver_source.tbz2
+
+# 编辑 defconfig 配置内核
+vi <install-path>/Linux_for_Tegra/source/kernel/kernel-jammy-src/arch/arm64/configs/defconfig
+
+cd <install-path>/Linux_for_Tegra/source/
+
+# 启用实时配置（可选）
+./generic_rt_build.sh "enable"
+
+# 编译内核
+export CROSS_COMPILE=<toolchain-path>/bin/aarch64-buildroot-linux-gnu-
+make -C kernel
+
+# 安装内核模块
+export INSTALL_MOD_PATH=<install-path>/Linux_for_Tegra/rootfs/
+sudo -E make install -C kernel
+
+# 拷贝生成的 Image
+cp kernel/kernel-jammy-src/arch/arm64/boot/Image \
+  <install-path>/Linux_for_Tegra/kernel/Image
+
+# 配置显示驱动与 RT 兼容性变量（如使用 RT 内核）
+export IGNORE_PREEMPT_RT_PRESENCE=1
+
+# 编译驱动模块
+export KERNEL_HEADERS=$PWD/kernel/kernel-jammy-src
+make modules
+
+# 安装驱动模块
+export INSTALL_MOD_PATH=<install-path>/Linux_for_Tegra/rootfs/
+sudo -E make modules_install
+
+# 更新 initrd
+cd <install-path>/Linux_for_Tegra
+sudo ./tools/l4t_update_initrd.sh
+
+# 编译设备树
+cd <install-path>/Linux_for_Tegra/source
+make dtbs
+cp kernel-devicetree/generic-dts/dtbs/* <install-path>/Linux_for_Tegra/kernel/dtb/
+```
+
+---
+
+## 💾 烧录到 eMMC
+
+> 请根据 Quick Start 指南中的指令操作。  
+> 推荐使用以下方法进入 **Recovery 模式**：
+
+![进入Recovery方式1](assert/5.png)  
+![进入Recovery方式2](assert/6.png)
+
+在 **R36.4.3** 版本下，执行以下命令进行烧录：
+
+```bash
+sudo ./flash.sh jetson-agx-orin-devkit internal
+```
+
+---
+
+## 🚀 二、Jetson Orin AGX 上安装 GPU 加速的 PyTorch（JetPack 6.2）
+
+SDK Manager给你装的torch是不可用的，所以还得自己装。以下是针对 Jetson Orin AGX 上安装支持 GPU 加速的 PyTorch（适用于 JetPack 6.2 和 CUDA 12.6）的详细指南。 ([PyTorch and TorchVision for Jetpack 6.2 - NVIDIA Developer Forums](https://forums.developer.nvidia.com/t/pytorch-and-torchvision-for-jetpack-6-2/325257?utm_source=chatgpt.com))
 
 ### 📋 系统要求
 
