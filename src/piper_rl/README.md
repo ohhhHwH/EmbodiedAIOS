@@ -72,7 +72,7 @@ ros2 launch piper_moveit_config_v4 demo.launch.py
 
 此外，需要给机械臂设置一个目标点位让他去靠近：
 ```angular2
-ros2 topic pub /camera_target_point geometry_msgs/PointStamped "{header: {frame_id: 'camera_link'}, point: {x: 0.3, y: 0.3, z: 0.3}}"
+ ros2 topic pub -r 1 /base_target_point geometry_msgs/msg/PointStamped "{header: {stamp: {sec: 0, nanosec: 0}, frame_id: 'base_link'}, point: {x: 0.2, y: 0.24, z: 0.25}}"
 ```
 
 ### 2. 训练强化学习策略
