@@ -70,6 +70,11 @@ ros2 launch piper_moveit_config_v4 demo.launch.py
 
 ![gazebo + moveit](./gazebo+moveit.png)
 
+此外，需要给机械臂设置一个目标点位让他去靠近：
+```angular2
+ros2 topic pub /camera_target_point geometry_msgs/PointStamped "{header: {frame_id: 'camera_link'}, point: {x: 0.3, y: 0.3, z: 0.3}}"
+```
+
 ### 2. 训练强化学习策略
 自行更换路径
 ```bash
