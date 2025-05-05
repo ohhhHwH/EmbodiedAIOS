@@ -47,7 +47,7 @@ piper_rl/
 启动命令示例：
 
 ```bash
-ros2 launch piper_description piper_gazebo.launch.py
+ros2 launch piper_gazebo piper_gazebo.launch.py
 ```
 
 使用下面的指令查看当前仿真的控制器是否存在，我的这个有点问题（厂家的gazebo跟moveit有冲突，JRM,SDA,WY)
