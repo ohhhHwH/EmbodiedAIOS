@@ -15,7 +15,7 @@ src/piper/backup
 analytical_solution
 oculus_reader
 oculus_reader/oculus_reader
-**/__pycache__/build/
+**/__pycache__/
 log/
 install/
 *.wav
