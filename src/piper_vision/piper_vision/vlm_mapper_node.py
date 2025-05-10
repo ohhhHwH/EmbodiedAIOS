@@ -10,6 +10,15 @@ import cv2
 from cv_bridge import CvBridge
 import os
 from datetime import datetime
+import s3img
+# 通过 pip install volcengine-python-sdk[ark] 安装方舟SDK
+from volcenginesdkarkruntime import Ark
+
+# 替换 <Model> 为模型的Model ID
+vlmmodel="doubao-1.5-vision-pro-32k-250115"
+
+
+#  @TODO 设计一个服务，如果收到vlm识别的请求，就读取摄像头数据，和当前的摄像头给的目标点的坐标，然后返回当前的一些内容，并且将他们的坐标锚定到目标点坐标附近（or直接给目标点坐标
 
 class VLMMapperNode(Node):
     def __init__(self):
@@ -25,6 +34,9 @@ class VLMMapperNode(Node):
         self.target_sub = self.create_subscription(PointStamped, '/camera_target_point', self.target_callback, 10)
 
         self.timer = self.create_timer(5.0, self.timer_callback)  # 每5秒触发一次检测
+
+        # 初始化Ark客户端，从环境变量中读取您的API Key
+        self.vlmclient = Ark(api_key=os.getenv('ARK_API_KEY'), )
 
         self.get_logger().info("📸 VLM 图像识别与坐标记录节点启动")
 
@@ -46,10 +58,11 @@ class VLMMapperNode(Node):
         # 调用大模型处理图像
         result = self.call_doubao()
         if result is None:
-            self.get_logger().error("❌ doubao.py 执行失败")
+            self.get_logger().error("❌ doubao vlm 执行失败")
             return
 
         # 坐标转换
+        #  @TODO 需要转换为世界坐标，而不是base_link
         try:
             target_in_base = self.tf_buffer.transform(self.target_point, 'base_link', timeout=rclpy.duration.Duration(seconds=1.0))
             x = target_in_base.point.x
@@ -75,7 +88,27 @@ class VLMMapperNode(Node):
 
     def call_doubao(self):
         try:
-            output = subprocess.check_output(["python3", "doubao.py"])
+            # 创建一个对话请求
+            response = self.vlmclient.chat.completions.create(
+                # 指定您部署了视觉理解大模型的推理接入点ID
+                model=vlmmodel,
+                messages=[
+                    {
+                        # 指定消息的角色为用户
+                        "role": "user",
+                        "content": [
+                            # 文本消息，希望模型根据图片信息回答的问题
+                            {"type": "text", "text": "你是一个室内地图测绘员，请提炼出这张照片中的物品、门牌号、以及所有有价值的信息。以list的形式返回给我"},
+                            # 图片信息，希望模型理解的图片
+                            {"type": "image_url", "image_url": {"url": f"{s3img.upload_file()}"}
+                             },
+                        ],
+                    }
+                ],
+            )
+
+            print(response.choices[0].message.content)
+            output = response.choices[0].message.content
             return json.loads(output)
         except Exception as e:
             self.get_logger().error(f"调用 doubao.py 失败: {e}")
