@@ -26,3 +26,4 @@ Log/OrbbecSDK.log*.txt
 src/Log/OrbbecSDK.log*.txt
 Log/OrbbecSDK.log*.txt
 src/Log/*.log*.txt
+src/piper_navigation/src/unitree_lidar_sdk/bin/*
