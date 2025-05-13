@@ -18,7 +18,7 @@
 ## 安装
 
 ```bash
-sudo apt-get install ros-humble-sensor-msgs gcc
+# install ROS2 humble on your system
 
 conda create -n raspi python=3.10
 conda activate raspi
@@ -27,7 +27,6 @@ pip install RPi.GPIO
 ```
 
 ```bash
-cd ~/ros2_ws
 colcon build --packages-select piper_raspi_hc_sr04
 ```
 
@@ -75,11 +74,8 @@ ros2 run piper_raspi_hc_sr04 hc_sr04_node
 
 2. 查看数据：
 ```bash
-# 查看所有可用的超声波话题
 ros2 topic list | grep ultrasonic
-
-# 查看特定传感器的数据
-ros2 topic echo /ultrasonic/sensor1
+ros2 topic echo /ultrasonic/sensor1 # 1,2,...
 ```
 
 ## 消息格式

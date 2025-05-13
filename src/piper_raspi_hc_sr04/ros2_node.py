@@ -5,7 +5,7 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32
 from sensor_msgs.msg import Range
-from hc_sr04_driver import MultiHCSR04Driver
+from driver import MultiHCSR04Driver
 import yaml
 import os
 
@@ -21,7 +21,7 @@ class HCSR04Node(Node):
         try:
             with open(config_path, "r") as f:
                 config = yaml.safe_load(f)
-                self.sensor_configs = config["sensors"]
+                self.sensor_configs = config["sensors"]  # Keep as list
                 self.get_logger().info(
                     f"successfully loaded sensor configurations from {config_path}"
                 )
@@ -29,10 +29,11 @@ class HCSR04Node(Node):
             self.get_logger().error(f"failed to load sensor configurations: {str(e)}")
             raise
 
-        self.publishers = {}
-        for sensor_name in self.sensor_configs.keys():
+        self.sensor_publishers = {}
+        for sensor in self.sensor_configs:
+            sensor_name = sensor["name"]
             topic_name = f"ultrasonic/{sensor_name}"
-            self.publishers[sensor_name] = self.create_publisher(Range, topic_name, 10)
+            self.sensor_publishers[sensor_name] = self.create_publisher(Range, topic_name, 10)
             self.get_logger().info(
                 f"created publisher for {sensor_name} on topic {topic_name}"
             )
@@ -57,7 +58,7 @@ class HCSR04Node(Node):
                 msg.max_range = 4.0
                 msg.range = float(distance)
 
-                self.publishers[sensor_name].publish(msg)
+                self.sensor_publishers[sensor_name].publish(msg)
                 self.get_logger().debug(
                     f"published distance for {sensor_name}: {distance} cm"
                 )

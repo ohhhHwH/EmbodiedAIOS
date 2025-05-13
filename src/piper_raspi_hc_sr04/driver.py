@@ -30,12 +30,6 @@ class HCSR04Driver:
         time.sleep(0.5)
 
     def get_distance(self) -> Optional[float]:
-        """
-        Get the distance measurement from the sensor
-
-        Returns:
-            float: Distance in centimeters, or None if measurement failed
-        """
         try:
             gpio.output(self.trig_pin, False)
             time.sleep(0.1)
@@ -67,21 +61,7 @@ class HCSR04Driver:
 
 
 class MultiHCSR04Driver:
-    def __init__(self, sensor_configs: Dict[str, Dict[str, int]] = None):
-        """
-        Initialize multiple HC-SR04 ultrasonic sensors
-
-        Args:
-            sensor_configs (Dict[str, Dict[str, int]], optional): Dictionary of sensor configurations.
-                If None, will try to load from sensors.yaml in the same directory.
-                Example: {
-                    'sensor1': {'trig': 27, 'echo': 17},
-                    'sensor2': {'trig': 22, 'echo': 23},
-                    'sensor3': {'trig': 24, 'echo': 25},
-                    'sensor4': {'trig': 8, 'echo': 7},
-                    ...
-                }
-        """
+    def __init__(self, sensor_configs: Optional[List[Dict[str, int]]] = None):
         if sensor_configs is None:
             # Try to load from YAML file
             current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -98,29 +78,17 @@ class MultiHCSR04Driver:
                 raise
 
         self.sensors = {}
-        for name, config in sensor_configs.items():
+        for idx, config in enumerate(sensor_configs):
+            name = config.get("name", f"sensor{idx}")
             self.sensors[name] = HCSR04Driver(config["trig"], config["echo"])
 
     def get_all_distances(self) -> Dict[str, Optional[float]]:
-        """
-        Get distance measurements from all sensors
-
-        Returns:
-            Dict[str, Optional[float]]: Dictionary of sensor names and their distances
-        """
         return {name: sensor.get_distance() for name, sensor in self.sensors.items()}
 
     def get_sensor_names(self) -> List[str]:
-        """
-        Get list of all sensor names
-
-        Returns:
-            List[str]: List of sensor names
-        """
         return list(self.sensors.keys())
 
     def cleanup(self):
-        """Clean up GPIO resources"""
         gpio.cleanup()
 
 

@@ -1,13 +1,4 @@
 sensors:
-  sensor1:
+  - name: sensor0_front
     trig: 27
     echo: 17
-  sensor2:
-    trig: 22
-    echo: 23
-  sensor3:
-    trig: 24
-    echo: 25
-  sensor4:
-    trig: 8
-    echo: 7 
