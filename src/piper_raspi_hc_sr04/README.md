@@ -18,11 +18,12 @@
 ## 安装
 
 ```bash
-# 安装 ROS2 依赖
-sudo apt-get install ros-humble-sensor-msgs
+sudo apt-get install ros-humble-sensor-msgs gcc
 
-# 安装 Python 依赖
-pip3 install RPi.GPIO
+conda create -n raspi python=3.10
+conda activate raspi
+pip install RPi.GPIO
+
 ```
 
 ```bash
