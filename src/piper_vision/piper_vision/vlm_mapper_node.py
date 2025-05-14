@@ -1,7 +1,9 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
-from geometry_msgs.msg import PointStamped
+from geometry_msgs.msg import PointStamped, Point
+from std_msgs.msg import Empty          # 触发器消息类型，可替换为你需要的类型
+
 import tf2_ros
 import tf2_geometry_msgs
 import subprocess
@@ -13,6 +15,9 @@ from datetime import datetime
 import s3img
 # 通过 pip install volcengine-python-sdk[ark] 安装方舟SDK
 from volcenginesdkarkruntime import Ark
+from typing import Dict, List
+from piper_msgs.msg import AllObjectPos
+
 
 # 替换 <Model> 为模型的Model ID
 vlmmodel="doubao-1.5-vision-pro-32k-250115"
@@ -31,28 +36,74 @@ class VLMMapperNode(Node):
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
 
         self.image_sub = self.create_subscription(Image, '/camera/color/image_raw', self.image_callback, 10)
-        self.target_sub = self.create_subscription(PointStamped, '/camera_target_point', self.target_callback, 10)
-
-        self.timer = self.create_timer(5.0, self.timer_callback)  # 每5秒触发一次检测
 
         # 初始化Ark客户端，从环境变量中读取您的API Key
         self.vlmclient = Ark(api_key=os.getenv('ARK_API_KEY'), )
 
+        # ① 订阅目标检测结果
+        # 存放最近一次接收到的解析结果
+        self.latest_data: Dict[str, Any] | None = None
+
+        # 创建订阅；callback 指向类方法 self.parse_object_points
+        self.subscription = self.create_subscription(
+            AllObjectPos,
+            "/piper_vision/all_object_points",
+            self.parse_object_points,  # <—— callback
+            qos_profile=10,
+        )
+
+        # ② 订阅“触发器”话题 —— 收到就调用 self.on_trigger
+        self.trigger_sub = self.create_subscription(
+            Empty,                        # 也可以用 Bool、String 等
+            "/detection_trigger",         # 发布方决定的触发话题名
+            self.on_trigger,              # 收到触发消息就执行检测逻辑
+            qos_profile=10,
+        )
+
+
         self.get_logger().info("📸 VLM 图像识别与坐标记录节点启动")
 
-    def image_callback(self, msg):
-        if not self.image_received:
-            cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
-            cv2.imwrite('test.jpg', cv_image)
-            self.image_received = True
-            self.get_logger().info("✅ 图像保存为 test.jpg")
 
-    def target_callback(self, msg):
-        self.target_point = msg
+    # ---------------------- 回调 ----------------------
+    def parse_object_points(self, msg: AllObjectPos) -> None:
+        """把消息解析为 dict 并写入 self.latest_data"""
 
-    def timer_callback(self):
-        if not self.image_received or self.target_point is None:
-            self.get_logger().warn("⚠️ 尚未准备好图像或目标点")
+        # 时间戳转为可读格式
+        t = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+        time_str = datetime.fromtimestamp(t).isoformat(timespec="milliseconds")
+
+        objs: List[Dict[str, Any]] = []
+        for i, name in enumerate(msg.names):
+            p: Point = msg.points[i]
+            w = msg.widths[i] if i < len(msg.widths) else None
+            h = msg.heights[i] if i < len(msg.heights) else None
+            objs.append(
+                {
+                    "name": name,
+                    "position": {"x": p.x, "y": p.y, "z": p.z},
+                    "size": {"width": w, "height": h},
+                }
+            )
+
+        # 缓存
+        self.latest_data = {
+            "time": time_str,
+            "frame": msg.header.frame_id,
+            "objects": objs,
+        }
+
+        # 可选：打印或做其他处理
+        self.get_logger().debug(f"最新数据已更新: {self.latest_data}")
+
+
+
+    # ---------- 响应拍照上传给vlm来进行检测 ----------
+    def on_trigger(self, _msg):
+        """
+        当收到触发器话题时执行。这里复用原先的 timer_callback 逻辑。
+        """
+        if not self.image_received or self.latest_data is None:
+            self.get_logger().warn("还没收到任何目标数据，忽略本次触发")
             return
 
         # 调用大模型处理图像
@@ -60,6 +111,7 @@ class VLMMapperNode(Node):
         if result is None:
             self.get_logger().error("❌ doubao vlm 执行失败")
             return
+
 
         # 坐标转换
         #  @TODO 需要转换为世界坐标，而不是base_link
@@ -73,6 +125,8 @@ class VLMMapperNode(Node):
             self.get_logger().error(f"❌ TF坐标转换失败: {str(e)}")
             return
 
+
+
         # 存储结果
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         with open("vlm_log.txt", "a") as f:
@@ -85,6 +139,18 @@ class VLMMapperNode(Node):
         # 重置标志
         self.image_received = False
         self.target_point = None
+        self.get_logger().info(f"🎯 触发检测，当前缓存数据:\n{self.latest_data}")
+
+
+
+    def image_callback(self, msg):
+        if not self.image_received:
+            cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+            now_time = datetime.now()
+            cv2.imwrite(f'{now_time}-pic.jpg', cv_image)
+            self.image_received = True
+            self.get_logger().info(f"✅ 图像保存为 {now_time}-pic.jpg")
+
 
     def call_doubao(self):
         try:
@@ -98,7 +164,7 @@ class VLMMapperNode(Node):
                         "role": "user",
                         "content": [
                             # 文本消息，希望模型根据图片信息回答的问题
-                            {"type": "text", "text": "你是一个室内地图测绘员，请提炼出这张照片中的物品、门牌号、以及所有有价值的信息。以list的形式返回给我"},
+                            {"type": "text", "text": "你是一个智能楼宇测绘员，请提炼出这张照片中的物品、门牌号、以及所有有价值的信息。以list的形式返回给我"},
                             # 图片信息，希望模型理解的图片
                             {"type": "image_url", "image_url": {"url": f"{s3img.upload_file()}"}
                              },

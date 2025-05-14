@@ -12,6 +12,8 @@ import torch
 KEYWORDS = ["你好", "开始", "激活"]
 TEMP_AUDIO_FILE = "./temp_listen.wav"
 
+
+# @TODO 需要后期加入声纹识别模块
 class WhisperNode(Node):
     def __init__(self):
         super().__init__('whisper_node')

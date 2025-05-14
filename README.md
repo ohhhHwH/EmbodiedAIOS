@@ -47,7 +47,7 @@
 15. **piper_slam**  
     - 基于unitree_lidar_sdk和IMU的建图（SLAM Toolbox）
 
-15. **piper_spatiallm_**  
+15. **piper_spatiallm**  
     - SpatialLM 是一个 3D LLM，旨在处理 3D 点云数据并生成结构化的 3D 场景理解输出。这些输出包括建筑元素，例如墙壁、门、窗以及带有语义类别的定向物体边界框。
    
 ---
