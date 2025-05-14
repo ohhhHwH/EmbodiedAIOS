@@ -3,7 +3,7 @@
 # Copyright (c) 2025 wheatfox
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Float32
+from std_msgs.msg import Float32, Header
 from sensor_msgs.msg import Range
 from driver import MultiHCSR04Driver
 import yaml
@@ -13,6 +13,7 @@ import os
 class HCSR04Node(Node):
     def __init__(self):
         super().__init__("hc_sr04_node")
+        self.get_logger().info("Initializing HCSR04Node...")
 
         # Load sensor configurations from YAML file in the same directory
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -33,18 +34,41 @@ class HCSR04Node(Node):
         for sensor in self.sensor_configs:
             sensor_name = sensor["name"]
             topic_name = f"ultrasonic/{sensor_name}"
-            self.sensor_publishers[sensor_name] = self.create_publisher(Range, topic_name, 10)
+            self.sensor_publishers[sensor_name] = self.create_publisher(
+                Range, topic_name, 10
+            )
             self.get_logger().info(
                 f"created publisher for {sensor_name} on topic {topic_name}"
             )
 
+        # Create heartbeat publisher
+        self.heartbeat_publisher = self.create_publisher(Float32, "ultrasonic/heartbeat", 10)
+        self.get_logger().info("created heartbeat publisher on topic ultrasonic/heartbeat")
+
         self.timer = self.create_timer(0.1, self.timer_callback)  # 10Hz
+        self.heartbeat_timer = self.create_timer(5, self.heartbeat_callback)
+        self.get_logger().info("Created timers for sensor readings and heartbeat")
+        
         self.driver = MultiHCSR04Driver(self.sensor_configs)
         self.get_logger().info(
             f"HC-SR04 node started with {len(self.sensor_configs)} sensors"
         )
 
+    def heartbeat_callback(self):
+        self.get_logger().debug("Heartbeat callback triggered")
+        current_time = self.get_clock().now().to_msg().sec
+        self.get_logger().info(f"heartbeat at {current_time}")
+        
+        # Publish heartbeat message
+        msg = Float32()
+        msg.data = float(current_time)
+        self.heartbeat_publisher.publish(msg)
+        self.get_logger().debug(f"Published heartbeat message: {msg.data}")
+
     def timer_callback(self):
+        self.get_logger().debug("Timer callback triggered")
+        # TODO: passed
+        return
         distances = self.driver.get_all_distances()
 
         for sensor_name, distance in distances.items():
@@ -68,6 +92,7 @@ class HCSR04Node(Node):
                 )
 
     def cleanup(self):
+        self.get_logger().info("Cleaning up node...")
         self.driver.cleanup()
 
 
@@ -76,9 +101,12 @@ def main(args=None):
     node = HCSR04Node()
 
     try:
+        node.get_logger().info("Starting to spin node...")
         rclpy.spin(node)
     except KeyboardInterrupt:
-        pass
+        node.get_logger().info("Keyboard interrupt received")
+    except Exception as e:
+        node.get_logger().error(f"Exception occurred: {str(e)}")
     finally:
         node.cleanup()
         node.destroy_node()
