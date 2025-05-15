@@ -176,7 +176,7 @@ class YoloRos2(Node):
         if enable_bg_removal == True:
             bg_removed = np.where((depth_image_3d > self.depth_threshold) | (depth_image_3d != depth_image_3d) | (depth_image_3d == 0), grey_color, np_color_image)
         else :
-            bg_removed = np.where((depth_image_3d != depth_image_3d) | (depth_image_3d == 0), grey_color, np_color_image)
+            bg_removed = np_color_image
         return bg_removed, np_color_image, np_depth_image
     
     def remove_mask_outliers(self, data, lower_percentile=10, upper_percentile=90):
