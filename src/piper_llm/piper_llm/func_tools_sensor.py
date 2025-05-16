@@ -172,7 +172,7 @@ map中的功能嵌入到FuncToolsVision类中?
 │ └─ 语义地图可视化
 '''
 class MapSensor(FuncToolsSensor):
-    def __init__(self, map_create, map_update, map_query_class, map_query_object, map_visualize):
+    def __init__(self, map_create, map_update, map_query_class, map_query_object, map_visualize=None):
         super().__init__()
         self.map_create = map_create
         self.map_update = map_update
@@ -282,16 +282,33 @@ class MapSensor(FuncToolsSensor):
 │ ├─ 图像中物体检测
 │ └─ 目标检测与定位
 '''
-# 视觉感知类函数
+# 函数名称:camera_enable()
+# 函数描述:相机开启
+# 输入:none
+# 输出:none
 def camera_enable():
     print("Camera enabled")
     return "Camera enabled"
+# 函数名称:image_capture()
+# 函数描述:图像获取
+# 输入:none
+# 输出:str(图片数据的位置)
 def image_capture():
     print("Image captured")
-    
+    return "Image captured at ..."
+# 函数名称:object_find()
+# 函数描述:图像中物体检测
+# 输入:str(要查找的物体名称), option:str(图片数据存储的位置)
+# 输出:str(物体位置信息-标签/坐标)
+# eg1:"杯子 在 x,y,z"
+# eg1:"杯子 在 标签1处", 标签1需要对应一个坐标能够使其他函数能够获取使用
 def object_find(target, image=None):
     print(f"Target location for {target} in {image}")
     return f"{target} located at x, y, z"
+# 函数名称:object_detection()
+# 函数描述:将图像中的物体进行标记-加入到语义地图?
+# 输入:option:str(图片数据的位置)
+# 输出:str(当前场景中的物体)
 def object_detection(image=None):
     print(f"Object detection on {image}")
     return "Object detected"
@@ -304,13 +321,25 @@ def object_detection(image=None):
 │ ├─ 语音转文本
 │ └─ 文本转语音
 '''
-# 听觉感知类函数
-def audio_capture():
+# 函数名称:audio_capture()
+# 函数描述:音频采集
+# 输入:int(采集时间)
+# 输出:str(音频数据的位置)
+def audio_capture(time=10):
     print("Audio captured")
-    return "Audio captured"
+    return f"Audio captured {time} at ..."
+
+# 函数名称:speech_to_text()
+# 函数描述:语音转文本
+# 输入:str(音频数据的位置)
+# 输出:str(文本数据)
 def speech_to_text(audio):
     print(f"Converting {audio} to text")
     return "Text from audio"
+# 函数名称:text_to_speech()
+# 函数描述:文本转语音
+# 输入:str(文本数据)
+# 输出:none;扬音器播放语音
 def text_to_speech(text):
     print(f"Converting {text} to speech")
     return "Speech from text"
@@ -321,21 +350,25 @@ def text_to_speech(text):
 │ ├─ 语义地图创建
 │ ├─ 语义地图更新
 │ ├─ 语义地图查询
-│ └─ 语义地图可视化
 '''
-# 语义地图感知类函数
+# 函数名称:semantic_map_create()
+# 函数描述:语义地图创建
 def semantic_map_create():
     print("Creating semantic map")
     return "Semantic map created"
+# 函数名称:semantic_map_update()
+# 语义地图更新-图像感知时调用该函数更新语义地图?
+# 参数待定
 def semantic_map_update():
     print("Updating semantic map")
     return "Semantic map updated"
+# 函数名称:semantic_map_query
+# 函数描述:语义地图中查询物体/类别
+# 输入:str(要查询的物体/类别)
+# 输出:str(物体位置信息/类别的种类描述)
 def semantic_map_query(object):
     print(f"Querying {object} semantic map")
     return f"{object} found at x, y, z"
-def semantic_map_visualization():
-    print("Visualizing semantic map")
-    return "Semantic map visualized"
 
 
 

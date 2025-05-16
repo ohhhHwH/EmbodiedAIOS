@@ -10,7 +10,7 @@ from func_tools_control import car_enable, car_get_status, car_move, car_stop
 from func_tools_sensor import VisionSensor, AudioSensor, MapSensor
 from func_tools_sensor import camera_enable, image_capture, object_detection, object_find
 from func_tools_sensor import audio_capture, speech_to_text, text_to_speech
-from func_tools_sensor import semantic_map_create, semantic_map_update, semantic_map_query, semantic_map_visualization
+from func_tools_sensor import semantic_map_create, semantic_map_update, semantic_map_query
 
 # 提示词
 system_prompt_cn = '''
@@ -207,7 +207,7 @@ def init_func_call():
         map_update=semantic_map_update,
         map_query_class=semantic_map_query,
         map_query_object=semantic_map_query,
-        map_visualize=semantic_map_visualization
+        map_visualize=None
     )
 
     # 通过get_func_tools_info()方法获取工具信息并拼接到system_prompt_cn中

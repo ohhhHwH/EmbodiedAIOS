@@ -191,7 +191,7 @@ class CarControl(FuncToolsControl):
 
 
 
-# 函数实现 类初始化 openai_client初始化
+
 '''
 ├─ 机械臂控制类函数
 │ ├─ 获取机械臂状态
@@ -199,19 +199,39 @@ class CarControl(FuncToolsControl):
 │ ├─ 机械臂急停
 │ └─ 机械臂抓取物体
 '''
-# 机械臂控制类函数
+# 函数名称:arm_enable()
+# 函数描述:机械臂开启
+# 输入:none
+# 输出:none
 def arm_enable():
     print("Robot arm enabled")
     return "Robot arm enabled"
+# 函数名称:arm_get_status()
+# 函数描述:获取机械臂状态
+# 输入:none
+# 输出:str(机械臂当前的状态)
 def arm_get_status():
     print("Robot arm status: OK")
     return "Robot arm status: OK"
+# 函数名称:arm_move()
+# 函数描述:机械臂移动到指定位置
+# 输入:str(位置信息-标签/坐标)
+# 输出:str(机械臂最后的状态,位置信息-标签/坐标)
 def arm_move(location):
     print(f"Robot arm moving to {location}")
     return f"Robot arm at {location} now"
+# 函数名称:arm_stop()
+# 函数描述:机械臂急停
+# 输入:none
+# 输出:none
 def arm_stop():
     print("Robot arm emergency stop activated")
     return "Robot arm emergency stop activated"
+# 函数名称:arm_grab()
+# 函数描述:机械臂抓取物体
+# 输入:str(物体名称)
+# 正常输出:str(机械臂抓取的物体名称)
+# 异常输出:str(机械臂无法抓取的错误信息-物体不存在/物体不在抓取范围内)
 def arm_grab(object):
     print(f"Robot arm grabbing {object}")
     return f"Robot arm grabbed {object}"
@@ -222,16 +242,33 @@ def arm_grab(object):
 │ ├─ 小车移动
 │ ├─ 小车急停
 '''
-# 小车控制类函数
+# 函数名称:car_enable()
+# 函数描述:小车开启
+# 输入:none
+# 输出:none
 def car_enable():
     print("Car enabled")
     return "Car enabled"
+# 函数名称:car_get_status()
+# 函数描述:获取小车状态
+# 输入:none
+# 输出:str(小车当前的状态,位置信息-标签/坐标)
+# eg1:"小车 在 x,y,z"
+# eg1:"小车 在 起点位置", 起点位置需要对应一个坐标能够使其他函数能够获取使用
 def car_get_status():
     print("Car status: OK")
     return "Car status: OK"
+# 函数名称:car_move()
+# 函数描述:小车移动到指定位置
+# 输入:str(位置信息-标签/坐标)
+# 输出:str(小车最后的状态,位置信息-标签/坐标)
 def car_move(location):
     print(f"Car moving to {location}")
     return f"Car at {location} now"
+# 函数名称:car_stop()
+# 函数描述:小车急停
+# 输入:none
+# 输出:none
 def car_stop():
     print("Car emergency stop activated")
     return "Car emergency stop activated"   
