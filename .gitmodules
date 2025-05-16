@@ -1,0 +1,15 @@
+[submodule "src/piper_navigation/src/point_lio_ros2"]
+	path = src/piper_navigation/src/point_lio_ros2
+	url = https://github.com/dfloreaa/point_lio_ros2.git
+[submodule "src/piper_navigation/src/pointcloud_to_laserscan"]
+	path = src/piper_navigation/src/pointcloud_to_laserscan
+	url = https://github.com/ros-perception/pointcloud_to_laserscan.git
+[submodule "src/piper_navigation/src/slam_toolbox"]
+	path = src/piper_navigation/src/slam_toolbox
+	url = https://github.com/SteveMacenski/slam_toolbox.git
+[submodule "src/piper_ranger/src/ranger_ros2"]
+	path = src/piper_ranger/src/ranger_ros2
+	url = https://github.com/agilexrobotics/ranger_ros2.git
+[submodule "src/piper_ranger/src/ugv_sdk"]
+	path = src/piper_ranger/src/ugv_sdk
+	url = https://github.com/agilexrobotics/ugv_sdk.git
