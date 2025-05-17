@@ -280,7 +280,7 @@ class YoloRos2(Node):
         detection_conf = detection.boxes.conf.cpu().numpy()
         
         all_object_pos = AllObjectPos()
-        all_object_pos.header.frame_id = "camera_link"
+        all_object_pos.header.frame_id = self.target_frame_id
         all_object_pos.header.stamp = self.get_clock().now().to_msg()
         all_object_pos.names = []
         all_object_pos.points = []
@@ -351,9 +351,9 @@ class YoloRos2(Node):
             point_stamped = PointStamped()
             point_stamped.header.frame_id = 'camera_link'
             point_stamped.header.stamp = self.get_clock().now().to_msg()
-            point_stamped.point.x = avg_depth
-            point_stamped.point.y = -world_x
-            point_stamped.point.z = -world_y
+            point_stamped.point.z = avg_depth
+            point_stamped.point.x = world_x
+            point_stamped.point.y = world_y
             point_in_base = do_transform_point(point_stamped, self.transform)
 
             all_object_pos.names.append(name)

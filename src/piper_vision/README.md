@@ -29,7 +29,9 @@ pip install -U ultralytics # 务必保证ultralytics处于最新版
 之后运行Yolo_ROS2节点。您可以根据需要更改这些参数：
 
 ```bash
-ros2 run piper_vision yolo_detect_3d --ros-args -p device:=cuda:0 -p interest:="person" -p depth_threshold:=15.0 -p model:=yoloe-11l-seg-pf -p bg_removal:=False
+ros2 run tf2_ros static_transform_publisher   0.3 0 0.1   -1.5708 0 -1.5708   base_link camera_link
+
+ros2 run piper_vision yolo_detect_3d --ros-args -p device:=cuda:0 -p interest:="person" -p depth_threshold:=15.0 -p model:=yoloe-11l-seg-pf -p bg_removal:=False -p target_frame_id:=map
 ```
 
 - **`device:=cuda:0`**:

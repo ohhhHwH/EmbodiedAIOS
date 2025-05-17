@@ -30,3 +30,4 @@ src/piper_navigation/src/unitree_lidar_sdk/bin/*
 *tfevent*
 *.ipynb
 videos/
+test.txt
