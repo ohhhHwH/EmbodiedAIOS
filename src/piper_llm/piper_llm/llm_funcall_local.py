@@ -1,16 +1,20 @@
 from openai import OpenAI
 import time
 
-# 引用func_tools_control.py文件
-from func_tools_control import ArmControl, CarControl
-from func_tools_control import arm_enable, arm_get_status, arm_move, arm_stop, arm_grab
-from func_tools_control import car_enable, car_get_status, car_move, car_stop
+from func_tools_arm import ArmControl
+from func_tools_arm import arm_enable, arm_get_status, arm_move, arm_stop, arm_grab
 
-# 引用func_tools_sensor.py文件
-from func_tools_sensor import VisionSensor, AudioSensor, MapSensor
-from func_tools_sensor import camera_enable, image_capture, object_detection, object_find
-from func_tools_sensor import audio_capture, speech_to_text, text_to_speech
-from func_tools_sensor import semantic_map_create, semantic_map_update, semantic_map_query
+from func_tools_car import CarControl
+from func_tools_car import car_enable, car_get_status, car_move, car_stop
+
+from func_tools_vision import VisionSensor
+from func_tools_vision import camera_enable, image_capture, object_detection, object_find
+
+from func_tools_audio import AudioSensor
+from func_tools_audio import audio_capture, speech_to_text, text_to_speech
+
+from func_tools_map import MapSensor
+from func_tools_map import semantic_map_create, semantic_map_update, semantic_map_query
 
 # 提示词
 system_prompt_cn = '''
