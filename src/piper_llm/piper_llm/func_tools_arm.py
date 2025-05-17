@@ -1,15 +1,13 @@
 '''
 ├─ 机械臂控制类 
-│ ├─ 机械臂使能
 │ ├─ 获取机械臂状态
 │ ├─ 机械臂移动
 │ ├─ 机械臂急停
 │ └─ 机械臂抓取物体
 '''
 class ArmControl():
-    def __init__(self, arm_enable, arm_status, arm_move, arm_stop, arm_grab):
+    def __init__(self, arm_status, arm_move, arm_stop, arm_grab):
         super().__init__()
-        self.arm_enable = arm_enable
         self.arm_status = arm_status
         self.arm_move = arm_move
         self.arm_stop = arm_stop
@@ -66,9 +64,8 @@ class ArmControl():
     
     # 调用func_call函数来执行相应的功能
     def func_call(self, func_name, arguments):
-        if func_name == "arm_enable":
-            return self.arm_enable()
-        elif func_name == "arm_status":
+
+        if func_name == "arm_status":
             return self.arm_status()
         elif func_name == "arm_move":
             return self.arm_move(arguments["location"])
@@ -78,8 +75,7 @@ class ArmControl():
             raise ValueError(f"Function {func_name} not recognized.")
         
     # 调试接口
-    def enable(self):   
-        return self.arm_enable()
+
     def status(self):
         return self.arm_status()
     def move_to(self, location):
@@ -96,13 +92,7 @@ class ArmControl():
 │ ├─ 机械臂急停
 │ └─ 机械臂抓取物体
 '''
-# 函数名称:arm_enable()
-# 函数描述:机械臂开启
-# 输入:none
-# 输出:none
-def arm_enable():
-    print("Robot arm enabled")
-    return "Robot arm enabled"
+
 # 函数名称:arm_get_status()
 # 函数描述:获取机械臂状态
 # 输入:none

@@ -8,9 +8,8 @@
 │ ├─ 小车急停
 '''
 class CarControl():
-    def __init__(self, car_enable, car_status, car_move, car_stop):
+    def __init__(self, car_status, car_move, car_stop):
         super().__init__()
-        self.car_enable = car_enable
         self.car_status = car_status
         self.car_move = car_move
         self.car_stop = car_stop
@@ -62,9 +61,8 @@ class CarControl():
     
     # 调用func_call函数来执行相应的功能
     def func_call(self, func_name, arguments):
-        if func_name == "car_enable":
-            return self.car_enable()
-        elif func_name == "car_status":
+
+        if func_name == "car_status":
             return self.car_status()
         elif func_name == "car_move":
             return self.car_move(arguments["location"])
@@ -74,8 +72,6 @@ class CarControl():
             raise ValueError(f"Function {func_name} not recognized.")
         
     # 调试接口
-    def enable(self):
-        return self.car_enable()
     def status(self):
         return self.car_status()
     def move_to(self, location):
@@ -88,18 +84,11 @@ class CarControl():
 
 '''
 ├─ 基座小车控制类 
-│ ├─ 小车使能
 │ ├─ 获取小车状态
 │ ├─ 小车移动
 │ ├─ 小车急停
 '''
-# 函数名称:car_enable()
-# 函数描述:小车开启
-# 输入:none
-# 输出:none
-def car_enable():
-    print("Car enabled")
-    return "Car enabled"
+
 # 函数名称:car_get_status()
 # 函数描述:获取小车状态
 # 输入:none

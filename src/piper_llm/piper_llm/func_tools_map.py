@@ -3,15 +3,14 @@
 '''
 map中的功能嵌入到FuncToolsVision类中?
 ├─ 语义地图感知
-│ ├─ 语义地图创建
+
 │ ├─ 语义地图更新
 │ ├─ 语义地图查询
 │ └─ 语义地图可视化
 '''
 class MapSensor():
-    def __init__(self, map_create, map_update, map_query_class, map_query_object, map_visualize=None):
+    def __init__(self, map_update, map_query_class, map_query_object, map_visualize=None):
         super().__init__()
-        self.map_create = map_create
         self.map_update = map_update
         self.map_query_class = map_query_class
         self.map_query_object = map_query_object
@@ -76,9 +75,8 @@ class MapSensor():
     
     # 调用func_call函数来执行相应的功能
     def func_call(self, func_name, arguments):
-        if func_name == "map_create":
-            return self.create_map()
-        elif func_name == "map_update":
+
+        if func_name == "map_update":
             return self.update_map()
         elif func_name == "map_query_class":
             return self.map_query_class(arguments["class"])
@@ -90,8 +88,7 @@ class MapSensor():
             raise ValueError(f"Function {func_name} not recognized.")
         
     # 调试接口
-    def create_map(self):
-        return self.map_create()
+
     def update_map(self):
         return self.map_update()
     def query_class_map(self, class_name):
@@ -105,15 +102,10 @@ class MapSensor():
 
 '''
 ├─ 语义地图感知
-│ ├─ 语义地图创建
 │ ├─ 语义地图更新
 │ ├─ 语义地图查询
 '''
-# 函数名称:semantic_map_create()
-# 函数描述:语义地图创建
-def semantic_map_create():
-    print("Creating semantic map")
-    return "Semantic map created"
+
 # 函数名称:semantic_map_update()
 # 语义地图更新-图像感知时调用该函数更新语义地图?
 # 参数待定

@@ -8,9 +8,8 @@
 │ └─ 目标检测与定位
 '''
 class VisionSensor():
-    def __init__(self, vision_camera_enable, vision_image_get, vision_object_find, vision_object_detection):
+    def __init__(self, vision_image_get, vision_object_find, vision_object_detection):
         super().__init__()
-        self.vision_camera_enable = vision_camera_enable
         self.vision_image_get = vision_image_get
         self.vision_object_find = vision_object_find
         self.vision_object_detection = vision_object_detection
@@ -63,9 +62,8 @@ class VisionSensor():
     
     # 调用func_call函数来执行相应的功能
     def func_call(self, func_name, arguments):
-        if func_name == "vision_camera_enable":
-            return self.camera_open()
-        elif func_name == "vision_image_get":
+
+        if func_name == "vision_image_get":
             return self.image_get()
         elif func_name == "vision_object_find":
             return self.find_object(arguments["object"])
@@ -75,8 +73,7 @@ class VisionSensor():
             raise ValueError(f"Function {func_name} not recognized.")
     
     # 调试接口
-    def camera_open(self):
-        return self.vision_camera_enable()
+
     def image_get(self):
         return self.vision_image_get()
     def find_object(self, object_name, image_data=None):
@@ -87,18 +84,12 @@ class VisionSensor():
 
 '''
 ├─ 视觉感知类
-│ ├─ 相机开启
+
 │ ├─ 图像获取
 │ ├─ 图像中物体检测
 │ └─ 目标检测与定位
 '''
-# 函数名称:camera_enable()
-# 函数描述:相机开启
-# 输入:none
-# 输出:none
-def camera_enable():
-    print("Camera enabled")
-    return "Camera enabled"
+
 # 函数名称:image_capture()
 # 函数描述:图像获取
 # 输入:none
