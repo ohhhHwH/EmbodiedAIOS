@@ -18,6 +18,10 @@ import numpy as np
 import traceback 
 from ultralytics import YOLOE
 from geometry_msgs.msg import Point
+from tf2_ros import TransformListener, Buffer
+from rclpy.duration import Duration
+from tf2_geometry_msgs import do_transform_point
+from geometry_msgs.msg import PointStamped
 
 # Get the ROS distribution version and set the shared directory for Yolo configuration files.
 ros_distribution = os.environ.get("ROS_DISTRO")
@@ -50,6 +54,9 @@ class YoloRos2(Node):
         self.declare_parameter("bg_removal", True, ParameterDescriptor(
             name="bg_removal", description="Whether to remove the background, default: True"
         ))
+        self.declare_parameter("target_frame_id", "map", ParameterDescriptor(
+            name="target_frame_id", description="The target frame id for tf, default: map"
+        ))
 
         self.depth_threshold = self.get_parameter("depth_threshold").value * 1000 # convert to mm
         self.conf_threshold = self.get_parameter('conf_threshold').value
@@ -58,6 +65,10 @@ class YoloRos2(Node):
         self.device = self.get_parameter('device').value
         self.enable_bg_removal = self.get_parameter('bg_removal').value
         self.model = self.get_parameter('model').value
+        self.target_frame_id = self.get_parameter('target_frame_id').value
+        self.camera_frame_id = "camera_link"
+        self.transform = None
+
         if self.model == "yoloe-11l-seg":
             self.text_prompt = True
         else:
@@ -95,6 +106,11 @@ class YoloRos2(Node):
             self.get_logger().info('/camera/set_ldp_enable service not available, waiting again...')
         # self.send_request(self.ldp_client, False)
 
+        # tf
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
+
+        self.get_logger().info("tf: camera_link to map is ready")
         self.interest_srv = self.create_service(SetInterest, '/set_interest', self.interest_callback)
         threading.Thread(target=self.yolo_main, daemon=True).start()
 
@@ -133,6 +149,15 @@ class YoloRos2(Node):
 
     def yolo_main(self):
         while rclpy.ok():
+            while self.tf_buffer.can_transform(self.target_frame_id,
+                                    self.camera_frame_id,
+                                    rclpy.time.Time(),
+                                    timeout=Duration(seconds=1.0)) == False:
+                self.get_logger().info(f"Waiting for tf: {self.camera_frame_id} to {self.target_frame_id}")
+            
+            self.transform = self.tf_buffer.lookup_transform(self.target_frame_id,
+                                                self.camera_frame_id,
+                                                rclpy.time.Time())
             try:
                 ros_rgb_image, ros_depth_image= self.image_queue.get(block=True, timeout=1)
             except queue.Empty:
@@ -176,7 +201,7 @@ class YoloRos2(Node):
         if enable_bg_removal == True:
             bg_removed = np.where((depth_image_3d > self.depth_threshold) | (depth_image_3d != depth_image_3d) | (depth_image_3d == 0), grey_color, np_color_image)
         else :
-            bg_removed = np.where((depth_image_3d != depth_image_3d) | (depth_image_3d == 0), grey_color, np_color_image)
+            bg_removed = np_color_image
         return bg_removed, np_color_image, np_depth_image
     
     def remove_mask_outliers(self, data, lower_percentile=10, upper_percentile=90):
@@ -266,7 +291,7 @@ class YoloRos2(Node):
             name = detection.names[detection_class[i]]
             conf = detection_conf[i]
 
-            self.get_logger().info(f"image_proc: find {name}, conf is {conf}")
+            # self.get_logger().info(f"image_proc: find {name}, conf is {conf}")
             # if name != self.interest and self.interest != "all": 
             #     continue
             if conf < self.conf_threshold:
@@ -307,7 +332,7 @@ class YoloRos2(Node):
                 avg_depth = sum(selected_depth) / len(selected_depth)
             else:
                 avg_depth = 0
-            self.get_logger().info(f"depth len is {len(selected_depth)}")
+            # self.get_logger().info(f"depth len is {len(selected_depth)}")
 
             avg_depth = avg_depth / 1000 #convert to meter
             center_depth = np_depth_image[int(center_y), int(center_x)] / 1000
@@ -322,12 +347,20 @@ class YoloRos2(Node):
             world_x2, world_y2 = px2xy(
                 [x2, y2], self.camera_info["k"], self.camera_info["d"], avg_depth)
 
+            # 相机坐标系下的x、y、z轴和像素坐标系下的是不同的.
+            point_stamped = PointStamped()
+            point_stamped.header.frame_id = 'camera_link'
+            point_stamped.header.stamp = self.get_clock().now().to_msg()
+            point_stamped.point.x = avg_depth
+            point_stamped.point.y = -world_x
+            point_stamped.point.z = -world_y
+            point_in_base = do_transform_point(point_stamped, self.transform)
 
             all_object_pos.names.append(name)
             point = Point()
-            point.x = avg_depth
-            point.y = -world_x
-            point.z = -world_y
+            point.x = point_in_base.point.x
+            point.y = point_in_base.point.y
+            point.z = point_in_base.point.z
             all_object_pos.points.append(point)
             all_object_pos.widths.append(abs(world_x2 - world_x1))
             all_object_pos.heights.append(abs(world_y2 - world_y1))
@@ -349,8 +382,14 @@ class YoloRos2(Node):
 
 def main():
     rclpy.init()
-    rclpy.spin(YoloRos2())
-    rclpy.shutdown()
+    node = YoloRos2()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        node.get_logger().info("Keyboard interrupt, shutting down...")
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
 
 if __name__ == "__main__":
     main()
