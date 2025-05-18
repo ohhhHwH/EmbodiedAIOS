@@ -30,10 +30,10 @@ class MapSensor():
             - map_query_object(object: str) # 功能描述: 查询语义地图；参数描述: 物体名称；返回物体位置
         """
         self.func_tools_list = [
-            {# 语义地图查询 
+            {# 语义地图查询类别
                 "type": "function",
                 "function": {
-                    "name": "query_class",
+                    "name": "map_query_class",
                     "description": "Query the semantic map",
                     "parameters": {
                         "type": "object",
@@ -47,11 +47,11 @@ class MapSensor():
                     },
                 }
             },
-            {# 语义地图查询
+            {# 语义地图查询物体
                 "type": "function",
                 "function": {
-                    "name": "query_object",
-                    "description": "Query the semantic map",
+                    "name": "map_query_object",
+                    "description": "Query the object in the semantic map",
                     "parameters": {
                         "type": "object",
                         "properties": {

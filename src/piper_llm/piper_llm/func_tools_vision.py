@@ -25,14 +25,14 @@ class VisionSensor():
             {# 图像获取
                 "type": "function",
                 "function": {
-                    "name": "image_get",
+                    "name": "vision_image_get",
                     "description": "Get image data",
                 }
             },
             {# 图像中找到物体
                 "type": "function",
                 "function": {
-                    "name": "find_object",
+                    "name": "vision_find_object",
                     "description": "Find an object in the image",
                     "parameters": {
                         "type": "object",
@@ -49,7 +49,7 @@ class VisionSensor():
             {# 物体标记
                 "type": "function",
                 "function": {
-                    "name": "object_detection",
+                    "name": "vision_object_detection",
                     "description": "Find an object in the image",
                 }
             }

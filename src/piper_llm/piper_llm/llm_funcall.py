@@ -141,7 +141,7 @@ def main(args=None):
         }
     ]
     
-    api_key = "sk-"
+    api_key = "sk-11a8684c26aa48f9bf6a9f413fd8117f"
     base_url = "https://api.deepseek.com"
 
 
@@ -157,6 +157,7 @@ def main(args=None):
 
 
     message = send_messages(client, messages, tools)
+    print(f"Model>\t {message}")
     # 如果conetent没有内容不打印,打印tool_calls的size
     while True:
         if message.content != "":
@@ -192,3 +193,6 @@ type='function', index=1)])
 
 
 '''
+
+if __name__ == "__main__":
+    main()

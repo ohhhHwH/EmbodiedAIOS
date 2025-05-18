@@ -18,10 +18,17 @@ class CarControl():
         该string会被传递给function_call的function参数中的description字段
         '''
         self.tools_info = """
-            - car_stop() # 功能描述: 停止小车 参数描述: 无
+            - car_status() # 功能描述: 获取小车状态
             - car_move(location: str) # 功能描述: 移动到指定位置 参数描述: 位置(字符串形式)
         """
         self.func_tools_list = [
+            # {# 小车状态
+            #     "type": "function",
+            #     "function": {
+            #         "name": "car_status",
+            #         "description": "Get the car status",
+            #     }
+            # },
             {# 小车移动
                 "type": "function",
                 "function": {
@@ -36,19 +43,6 @@ class CarControl():
                             }
                         },
                         "required": ["location"]
-                    },
-                }
-            },
-            {# 小车急停
-                "type": "function",
-                "function": {
-                    "name": "car_stop",
-                    "description": "Stop the car",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {},
-                        # 无参数
-                        # 直接调用函数
                     },
                 }
             },
@@ -97,6 +91,7 @@ class CarControl():
 # eg1:"小车 在 起点位置", 起点位置需要对应一个坐标能够使其他函数能够获取使用
 def car_get_status():
     print("Car status: OK")
+    
     return "Car status: OK"
 # 函数名称:car_move()
 # 函数描述:小车移动到指定位置
@@ -104,6 +99,7 @@ def car_get_status():
 # 输出:str(小车最后的状态,位置信息-标签/坐标)
 def car_move(location):
     print(f"Car moving to {location}")
+    
     return f"Car at {location} now"
 # 函数名称:car_stop()
 # 函数描述:小车急停

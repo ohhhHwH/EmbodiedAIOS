@@ -15,9 +15,12 @@ class AudioSensor():
 
         self.tools_info = """
             - audio_capture(time: int) # 功能描述: 音频采集 参数描述: 时间(整数形式)
-            - audio_speech_to_text(at: str) # 功能描述: 语音转文本 参数描述: 音频位置(字符串形式)
-            - audio_text_to_speech(text: str) # 功能描述: 文本转语音 参数描述: 文本数据(字符串形式)
+            
         """
+        '''
+        - audio_speech_to_text(at: str) # 功能描述: 语音转文本 参数描述: 音频位置(字符串形式)
+        - audio_text_to_speech(text: str) # 功能描述: 文本转语音 参数描述: 文本数据(字符串形式)
+        '''
         self.func_tools_list = [
             {
                 "type": "function",

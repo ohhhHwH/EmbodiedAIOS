@@ -40,4 +40,256 @@ Robot arm grabbed 红杯-x,y,z
 3. 使用map_query_object查询红色杯的位置，以获取其准确位置信息。
 4. 调用arm_grab函数抓取位于特定位置的红色杯子。
 
-接下来需要您确认是否需要继续执行这些步骤，并请提供必要的参数值或明确下一步操作。
+接下来需要您确认是否需要继续执行这些步骤，并请提供必要的参数值或明确下一步操作。{
+    [Funcall]:map_query_object(object:厨房);
+    [Funcall]:car_move(location:厨房位置);
+    [Funcall]:vision_object_find(object:红色的杯子);
+    [Funcall]:arm_grab(object:红色的杯子位置);
+}
+map_query_object:{'object': '厨房'}
+
+厨房 found at x, y, z
+
+car_move:{'location': '厨房位置'}
+
+Car at 厨房位置 now
+
+vision_object_find:{'object': '红色的杯子'}
+
+红色的杯子 located at x, y, z
+
+arm_grab:{'object': '红色的杯子位置'}
+
+Robot arm grabbed 红色的杯子位置
+
+car_stop:{}
+
+Car emergency stop activated
+
+audio_text_to_speech:{'text': '警告！小车紧急停止已激活，请检查环境安全'}
+
+Speech from text
+
+vision_image_get:{}
+
+Image captured at ...
+
+audio_text_to_speech:{'text': '安全警报已发送，系统进入待机状态。请人工检查紧急停止原因后重新激活系统'}
+
+Speech from text
+
+car_stop:{}
+
+Car emergency stop activated
+
+arm_move:{'location': '待机位置'}
+
+Robot arm at 待机位置 now
+
+audio_text_to_speech:{'text': '系统已完全停止，等待人工复位指令'}
+
+Speech from text
+
+vision_image_get:{}
+
+Image captured at ...
+{
+    [Funcall]:map_query_class(class:杯子);
+    [Funcall]:map_query_object(object:红色杯子);
+    [Funcall]:car_move(location:厨房);
+    [Funcall]:vision_object_find(object:红色杯子);
+    [Funcall]:arm_move(location:红色杯子位置);
+    [Funcall]:arm_grab(object:红色杯子);
+}
+map_query_class:{'class': '杯子'}
+
+杯子 found at x, y, z
+
+map_query_object:{'object': '红色杯子'}
+
+红色杯子 found at x, y, z
+
+car_move:{'location': '厨房'}
+
+Car at 厨房 now
+
+vision_object_find:{'object': '红色杯子'}
+
+红色杯子 located at x, y, z
+
+arm_move:{'location': '红色杯子位置'}
+
+Robot arm at 红色杯子位置 now
+
+arm_grab:{'object': '红色杯子'}
+
+Robot arm grabbed 红色杯子
+
+audio_text_to_speech:{'text': '已成功抓取红色杯子'}
+
+Speech from text
+
+audio_text_to_speech:{'text': '红色杯子已成功抓取并放置在机械臂上，任务完成。请问您还需要我执行其他任务吗？'}
+
+Speech from text
+
+audio_text_to_speech:{'text': '当前任务已完成，机械臂已抓取红色杯子。请告诉我是否需要继续执行其他操作？'}
+
+Speech from text
+
+audio_text_to_speech:{'text': '任务已完成，红色杯子已成功抓取。请指示下一步操作。'}
+
+Speech from text
+{
+    [Funcall]:map_query_class(class:杯子);
+    [Funcall]:vision_object_find(object:红色的杯子);
+    [Funcall]:map_query_object(object:厨房);
+    [Funcall]:car_move(location:厨房);
+    [Funcall]:arm_move(location:红色的杯子);
+    [Funcall]:arm_grab(object:红色的杯子);
+}
+map_query_class:{'class': '杯子'}
+
+杯子 found at x, y, z
+
+vision_object_find:{'object': '红色的杯子'}
+
+红色的杯子 located at x, y, z
+
+map_query_object:{'object': '厨房'}
+
+厨房 found at x, y, z
+
+car_move:{'location': '厨房'}
+
+Car at 厨房 now
+
+arm_move:{'location': '红色的杯子'}
+
+Robot arm at 红色的杯子 now
+
+arm_grab:{'object': '红色的杯子'}
+
+Robot arm grabbed 红色的杯子
+
+car_move:{'location': '初始位置'}
+
+Car at 初始位置 now
+{
+    [Funcall]:map_query_object(object:厨房);
+    [Funcall]:car_move(location:厨房位置);
+    [Funcall]:vision_object_find(object:红色的杯子);
+    [Funcall]:arm_grab(object:红色的杯子);
+}
+map_query_object:{'object': '厨房'}
+
+厨房 found at x, y, z
+
+car_move:{'location': '厨房位置'}
+
+Car at 厨房位置 now
+
+vision_object_find:{'object': '红色的杯子'}
+
+红色的杯子 located at x, y, z
+
+arm_grab:{'object': '红色的杯子'}
+
+Robot arm grabbed 红色的杯子
+
+car_status:{}
+
+Car status: OK
+{
+    [Funcall]:map_query_class(class:杯子);
+    [Funcall]:vision_object_find(object:红色的杯子);
+    [Funcall]:arm_grab(object:红色的杯子);
+}
+map_query_class:{'class': '杯子'}
+
+杯子 found at x, y, z
+
+vision_object_find:{'object': '红色的杯子'}
+
+红色的杯子 located at x, y, z
+
+arm_grab:{'object': '红色的杯子'}
+
+Robot arm grabbed 红色的杯子
+
+car_move:{'location': '厨房'}
+
+Car at 厨房 now
+
+arm_move:{'location': 'x,y,z'}
+
+Robot arm at x,y,z now
+
+arm_grab:{'object': '红色的杯子'}
+
+Robot arm grabbed 红色的杯子
+{
+    [Funcall]:map_query_class(class:杯子);
+    [Funcall]:map_query_object(object:红色的杯子);
+    [Funcall]:car_move(location:厨房);
+    [Funcall]:vision_object_find(object:红色的杯子);
+    [Funcall]:arm_grab(object:红色的杯子);
+}
+map_query_class:{'class': '杯子'}
+
+杯子 found at x, y, z
+
+map_query_object:{'object': '红色的杯子'}
+
+红色的杯子 found at x, y, z
+
+car_move:{'location': '厨房'}
+
+Car at 厨房 now
+
+vision_object_find:{'object': '红色的杯子'}
+
+红色的杯子 located at x, y, z
+
+arm_grab:{'object': '红色的杯子'}
+
+Robot arm grabbed 红色的杯子
+
+car_move:{'location': '初始位置'}
+
+Car at 初始位置 now
+{
+    [Funcall]:map_query_class(class:杯子);
+    [Funcall]:map_query_object(object:红色杯子);
+    [Funcall]:car_move(location:厨房);
+    [Funcall]:vision_object_find(object:红色杯子);
+    [Funcall]:arm_move(location:红色杯子位置);
+    [Funcall]:arm_grab(object:红色杯子);
+}
+map_query_class:{'class': '杯子'}
+
+杯子 found at x, y, z
+
+map_query_object:{'object': '红色杯子'}
+
+红色杯子 found at x, y, z
+
+car_move:{'location': '厨房'}
+
+Car at 厨房 now
+
+vision_object_find:{'object': '红色杯子'}
+
+红色杯子 located at x, y, z
+
+arm_move:{'location': '红色杯子位置'}
+
+Robot arm at 红色杯子位置 now
+
+arm_grab:{'object': '红色杯子'}
+
+Robot arm grabbed 红色杯子
+
+car_move:{'location': '起始位置'}
+
+Car at 起始位置 now
