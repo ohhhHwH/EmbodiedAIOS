@@ -10,12 +10,9 @@ export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 export ROS_NAMESPACE=""
 export ROS_DISCOVERY_SERVER=""
 export ROS_LOCALHOST_ONLY=0
-
-ip_address=$(hostname -I)
-# get the ip start with 10, which is school network
-ip_address=$(echo $ip_address | awk '{for(i=1;i<=NF;i++)if($i~/^10/)print $i}')
-
-export ROS_IP=$ip_address
+# export ROS_IP=$(hostname -I| awk '{for(i=1;i<=NF;i++)if($i~/^10/)print $i}')
+export ROS_IP=100.89.243.72
 
 echo "ROS_IP: $ROS_IP"
+
 python3 raspi_hc_sr04/node.py
