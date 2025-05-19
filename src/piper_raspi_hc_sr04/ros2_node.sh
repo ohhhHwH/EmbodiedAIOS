@@ -18,4 +18,4 @@ ip_address=$(echo $ip_address | awk '{for(i=1;i<=NF;i++)if($i~/^10/)print $i}')
 export ROS_IP=$ip_address
 
 echo "ROS_IP: $ROS_IP"
-python3 piper_raspi_hc_sr04/node.py
+python3 raspi_hc_sr04/node.py
