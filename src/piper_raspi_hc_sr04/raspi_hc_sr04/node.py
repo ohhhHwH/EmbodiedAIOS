@@ -81,7 +81,7 @@ class HCSR04Node(Node):
 
                 self.sensor_publishers[sensor_name].publish(msg)
                 self.get_logger().info(
-                    f"published distance for {sensor_name}: {distance} cm, range: {msg.range} m"
+                    f"published distance for {sensor_name}: {distance:.6f} cm, range: {msg.range:.6f} m"
                 )
             else:
                 self.get_logger().warn(

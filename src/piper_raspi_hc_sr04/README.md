@@ -22,10 +22,10 @@ source /opt/ros/humble/setup.zsh # or setup.bash
 pip install -r requirements.txt
 
 # 运行驱动程序
-python3 piper_raspi_hc_sr04/driver.py
+python3 raspi_hc_sr04/driver.py
 
 # 运行节点
-python3 piper_raspi_hc_sr04/node.py
+./ros2_node.sh
 ```
 
 TODO: 支持 colcon build，现在只支持上面这样的运行方式不支持 ros2 run 运行
@@ -92,7 +92,7 @@ range: 0.09544999897480011
 
 ## 配置
 
-传感器配置通过 YAML 文件管理，位于 `piper_raspi_hc_sr04/sensors.yaml`。配置示例请参考仓库内的 yaml 文件。
+传感器配置通过 YAML 文件管理，位于 `raspi_hc_sr04/sensors.yaml`。配置示例请参考仓库内的 yaml 文件。
 
 每个传感器配置需要：
 - `name`: 传感器名称
