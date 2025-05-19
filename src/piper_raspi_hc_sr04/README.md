@@ -99,5 +99,15 @@ range: 0.09544999897480011
 - `trig`: TRIG 连接的 GPIO 号（不是 pin 号）
 - `echo`: ECHO 连接的 GPIO 号（不是 pin 号）
 
+## tailscale 配置
+
+https://www.danaukes.com/notebook/ros2/30-configuring-ros-over-tailscale/
+https://github.com/tailscale/tailscale/issues/11972
+
+```bash
+sudo apt install -y ros-humble-rmw-fastrtps-cpp
+```
+
+
 
 wheatfox wheatfox17@icloud.com 2025
