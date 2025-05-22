@@ -29,4 +29,4 @@ src/Log/*.log*.txt
 src/piper_navigation/src/unitree_lidar_sdk/bin/*
 *tfevent*
 *.ipynb
-videos/
+videos*/
