@@ -114,7 +114,17 @@ class YoloRos2(Node):
         self.interest_srv = self.create_service(SetInterest, '/set_interest', self.interest_callback)
         threading.Thread(target=self.yolo_main, daemon=True).start()
 
+        # map.txt
+        self.f = open("map.txt", "w")  # 可换为 "a" 追加模式
+        self.written_names = set()
+
         self.get_logger().info("YoloRos2 node init.")
+
+    def write_unique_point(self, name, point):
+        """写入 name: (x, y, z)，如果 name 是第一次出现"""
+        if name not in self.written_names:
+            self.written_names.add(name)
+            self.f.write(f"{name}: ({point.x:.3f}, {point.y:.3f}, {point.z:.3f})\n")
 
     def interest_callback(self, request, response):
         self.interest = request.interest
@@ -365,6 +375,10 @@ class YoloRos2(Node):
             all_object_pos.widths.append(abs(world_x2 - world_x1))
             all_object_pos.heights.append(abs(world_y2 - world_y1))
 
+            # 输出检测到的物体到文件
+            for name, point in zip(all_object_pos.names, all_object_pos.points):
+                self.write_unique_point(name, point)
+
             if name == self.interest: 
                 object_pos = ObjectPos()
                 object_pos.header.frame_id = "camera_link"
@@ -388,6 +402,7 @@ def main():
     except KeyboardInterrupt:
         node.get_logger().info("Keyboard interrupt, shutting down...")
     finally:
+        node.f.close()
         node.destroy_node()
         rclpy.shutdown()
 

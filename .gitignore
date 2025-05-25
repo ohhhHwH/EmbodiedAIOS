@@ -32,4 +32,6 @@ src/piper_navigation/src/unitree_lidar_sdk/bin/*
 videos/
 test.txt
 videos*/
+*.wav
+*.mp3
 
