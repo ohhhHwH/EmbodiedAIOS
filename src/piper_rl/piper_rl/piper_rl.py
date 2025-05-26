@@ -1,11 +1,11 @@
 import gymnasium as gym
 import numpy as np
 import mujoco
-from mujoco import viewer
 import os
 import cv2
 import math
 import random
+from ctrl_by_mujoco import CtrlByMujoco
 
 JOINT_NUM = 6
 JOINTLOWERLIMIT = [-2.618, 0.0, -2.967, -1.745, -1.22, -2.0944]
@@ -16,10 +16,10 @@ GRIPPER_OPEN_POS_8 = 0.0
 GRIPPER_CLOSE_POS_8 = -0.035
 
 
-class MujocoRobotEnv(gym.Env):
+class RobotEnv(gym.Env):
     def __init__(
         self,
-        sim_steps=10,
+        ctrl_mode: str,
         render_mode=None,
         log_interval=1024,
         capture_interval=None,
@@ -30,39 +30,28 @@ class MujocoRobotEnv(gym.Env):
         self.log_interval = log_interval
         self.capture_interval = capture_interval
         self.max_step = max_step
-        model_path = os.path.join(
-            "./src/piper_description", "mujoco_model", "piper_description.xml"
-        )
-        model_path = os.path.abspath(model_path)
-        self.model = mujoco.MjModel.from_xml_path(model_path)
-        self.data = mujoco.MjData(self.model)
 
-        self.render_mode = render_mode
-        if self.render_mode:
-            self.renderer = mujoco.Renderer(self.model)
-            self.cam = mujoco.MjvCamera()
-            # 视距，拉远看整个机械臂
-            self.cam.distance = 2.0
+        if ctrl_mode == "ros":
+            if render_mode:
+                raise ValueError("ROS mode does not support rendering.")
+            raise NotImplementedError()
+        elif ctrl_mode == "mujoco":
+            self.render_mode = render_mode
+            self.ctrl = CtrlByMujoco(
+                JOINT_NUM,
+                JOINTLOWERLIMIT,
+                JOINTUPPERLIMIT,
+                render_mode=self.render_mode,
+            )
+        else:
+            raise ValueError(f"Unsupported ctrl_mode: {ctrl_mode}")
 
-        self.sim_steps = sim_steps
         self.step_counter = 0
         self.total_reward = 0
         self.first_catch_step = -1
         self.reset_counter = 0
         self.mean_first_catch_step = 0
 
-        self.ee_site_name = "ee_site"
-        self.actuator_ids = [
-            mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_ACTUATOR, f"joint{i+1}")
-            for i in range(JOINT_NUM)
-        ]
-        # 两个夹爪的 ID
-        self.joint7_id = mujoco.mj_name2id(
-            self.model, mujoco.mjtObj.mjOBJ_JOINT, "joint7"
-        )
-        self.joint8_id = mujoco.mj_name2id(
-            self.model, mujoco.mjtObj.mjOBJ_JOINT, "joint8"
-        )
         self.set_target_pos()
         self.target_quat = gen_target_quat()
 
@@ -87,9 +76,9 @@ class MujocoRobotEnv(gym.Env):
         )
 
     def _get_obs(self):
-        joint_angles = self.data.qpos[:JOINT_NUM].copy()
-        ee_pos = self.data.site(self.ee_site_name).xpos.copy()
-        ee_quat = get_quat(self.data.site("ee_site").xmat.reshape(3, 3).copy())
+        joint_angles = self.ctrl.get_joint()
+        ee_pos = self.ctrl.get_ee_pos()
+        ee_quat = get_quat(self.ctrl.get_ee_rotmat())
         return np.concatenate(
             [
                 joint_angles,
@@ -99,10 +88,9 @@ class MujocoRobotEnv(gym.Env):
                 self.target_quat,
             ]
         ).astype(np.float32)
-        # return self.target_pos
 
     def reset(self, seed=None, options=None):
-        mujoco.mj_resetData(self.model, self.data)
+        self.ctrl.reset()
         self.step_counter = 0
         self.total_reward = 0
         if self.first_catch_step != -1:
@@ -118,14 +106,20 @@ class MujocoRobotEnv(gym.Env):
 
     def ctrl_gripper(self, close=True):
         if close:
-            self.data.ctrl[self.joint7_id] = GRIPPER_CLOSE_POS_7
-            self.data.ctrl[self.joint8_id] = GRIPPER_CLOSE_POS_8
+            self.ctrl.set_joint(
+                {
+                    self.joint7_id: GRIPPER_CLOSE_POS_7,
+                    self.joint8_id: GRIPPER_CLOSE_POS_8,
+                }
+            )
         else:
-            self.data.ctrl[self.joint7_id] = GRIPPER_OPEN_POS_7
-            self.data.ctrl[self.joint8_id] = GRIPPER_OPEN_POS_8
-        for _ in range(self.sim_steps):
-            mujoco.mj_forward(self.model, self.data)
-            mujoco.mj_step(self.model, self.data)
+            self.ctrl.set_joint(
+                {
+                    self.joint7_id: GRIPPER_OPEN_POS_7,
+                    self.joint8_id: GRIPPER_OPEN_POS_8,
+                }
+            )
+        self.ctrl.send_a_step()
 
     def step(self, action):
         self.step_counter += 1
@@ -140,26 +134,19 @@ class MujocoRobotEnv(gym.Env):
             * np.abs(norm(action, self.action_space.low, self.action_space.high) - 0.5)
             ** 10
         )
-        for i in range(JOINT_NUM):
-            qpos = self.data.qpos[self.actuator_ids[i]] + action[i]
-            self.data.ctrl[self.actuator_ids[i]] = np.clip(
-                qpos,
-                JOINTLOWERLIMIT[i],
-                JOINTUPPERLIMIT[i],
-            )
-            # 关节限制惩罚，防止关节超过可转动范围
-            reward -= 10.0 * abs(self.data.ctrl[self.actuator_ids[i]] - qpos)
-        # 直接修改qpos但不修改ctrl，相当于让关节瞬移到目标位置
-        # 但仿真器又仿真ctrl它回到原点，所以每步step都几乎没动
-        # self.data.qpos[:JOINT_NUM] = qpos
+        id2action = {
+            actuator_id: action[idx]
+            for idx, actuator_id in enumerate(self.ctrl.actuator_ids)
+        }
+        excess = self.ctrl.add_joint(id2action)
+        # 关节限制惩罚，防止关节超过可转动范围
+        reward -= 10.0 * np.sum(abs(np.array(list(excess.values()))))
 
-        for _ in range(self.sim_steps):
-            mujoco.mj_forward(self.model, self.data)
-            mujoco.mj_step(self.model, self.data)
+        self.ctrl.send_a_step()
 
-        ee_pos = self.data.site(self.ee_site_name).xpos.copy()
+        ee_pos = self.ctrl.get_ee_pos()
         # 末端姿态四元数
-        ee_quat = get_quat(self.data.site("ee_site").xmat.reshape(3, 3).copy())
+        ee_quat = get_quat(self.ctrl.get_ee_rotmat())
         dist = np.linalg.norm(ee_pos - self.target_pos)
         dir_dist = np.linalg.norm(ee_quat - self.target_quat)
         # dist(0 ~ 2) -> reward(20 ~ 0)
@@ -207,7 +194,7 @@ class MujocoRobotEnv(gym.Env):
                 + f"📍 末端/目标位置: ({list2str(ee_pos)})/({list2str(self.target_pos)})\n"
                 + f"📏 当前距离: {dist:.4f} m\n"
                 + f"🤖 当前action: ({list2str(action)})\n"
-                + f"🤖 当前关节: ({list2str(self.data.qpos[:JOINT_NUM])})\n"
+                + f"🤖 当前关节: ({list2str(self.ctrl.get_joint())})\n"
                 + f"🤖 当前/目标姿态四元数: ({list2str(ee_quat)})/({list2str(self.target_quat)})\n"
                 + f"💰 当前/总奖励: {reward:.4f} / {self.total_reward:.4f}, 步均奖励: {self.total_reward/self.step_counter:.4f}\n"
                 + (f"✅ 成功抓取! \n" if catched else "")
@@ -222,15 +209,7 @@ class MujocoRobotEnv(gym.Env):
         return self._get_obs(), reward, catched or done, False, {}
 
     def render(self):
-        if self.render_mode == "rgb_array":
-            self.renderer.update_scene(self.data, camera=self.cam)
-            return self.renderer.render()
-        elif self.render_mode == "human":
-            if not hasattr(self, "viewer"):
-                self.viewer = mujoco.viewer.launch_passive(self.model, self.data)
-            self.viewer.sync()
-        else:
-            raise ValueError("Invalid render mode. Use 'rgb_array' or 'human'.")
+        return self.ctrl.render()
 
     def set_target_pos(self):
         self.target_pos = np.random.uniform(low=[0.2, -0.2, 0.2], high=[0.3, 0.2, 0.4])
