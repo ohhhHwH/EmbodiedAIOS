@@ -29,7 +29,9 @@ pip install -U ultralytics # 务必保证ultralytics处于最新版
 之后运行Yolo_ROS2节点。您可以根据需要更改这些参数：
 
 ```bash
-ros2 run piper_vision yolo_detect_3d --ros-args -p device:=cuda:0 -p interest:="person" -p depth_threshold:=15.0 -p model:=yoloe-11l-seg-pf -p bg_removal:=False
+ros2 run tf2_ros static_transform_publisher   0.3 0 0.1   -1.5708 0 -1.5708   base_link camera_link
+
+ros2 run piper_vision yolo_detect_3d --ros-args -p device:=cuda:0 -p interest:="person" -p depth_threshold:=15.0 -p model:=yoloe-11l-seg-pf -p bg_removal:=False -p target_frame_id:=map
 ```
 
 - **`device:=cuda:0`**:
@@ -55,9 +57,12 @@ ros2 run piper_vision yolo_detect_3d --ros-args -p device:=cuda:0 -p interest:="
 - **`conf_threshold:=0.7`**:
   设置置信度阈值，默认为 `0.7`。检测到的目标物体的置信度低于该值时，会被过滤掉，不会发布到话题中。可以根据需要调整该值以平衡检测精度和召回率。
 
+- **`target_frame_id:=map`**:
+  设置坐标转换的目标坐标系，用于`/piper_vision/all_object_points`。
+
 yolo_ros2节点会在以下的topic中发布消息：
 
-- `/piper_vision/all_object_points` 用于发布看到的所有目标物体的位置和尺寸信息。
+- `/piper_vision/all_object_points` 用于发布看到的所有目标物体的位置（相对于target_frame_id的坐标）和尺寸信息。
 - `/piper_vision/target_point` 仅发布名为参数`interest`的目标物体的位置和尺寸信息。
 - `/piper_vision/pred_image` 用于发布经过 YOLO 检测和标注后的图像，便于可视化检测结果。可以用rviz2查看。
 
