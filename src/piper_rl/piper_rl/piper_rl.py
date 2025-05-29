@@ -6,14 +6,11 @@ import cv2
 import math
 import random
 from ctrl_by_mujoco import CtrlByMujoco
+from ctrl_by_piper_sdk import CtrlByPiperSDK
 
 JOINT_NUM = 6
 JOINTLOWERLIMIT = [-2.618, 0.0, -2.967, -1.745, -1.22, -2.0944]
 JOINTUPPERLIMIT = [2.618, 3.14, 0.0, 1.745, 1.22, 2.0944]
-GRIPPER_OPEN_POS_7 = 0.0
-GRIPPER_CLOSE_POS_7 = 0.035
-GRIPPER_OPEN_POS_8 = 0.0
-GRIPPER_CLOSE_POS_8 = -0.035
 
 
 class RobotEnv(gym.Env):
@@ -42,6 +39,14 @@ class RobotEnv(gym.Env):
                 JOINTLOWERLIMIT,
                 JOINTUPPERLIMIT,
                 render_mode=self.render_mode,
+            )
+        elif ctrl_mode == "piper_sdk":
+            if render_mode:
+                raise ValueError("Piper SDK mode does not support rendering.")
+            self.ctrl = CtrlByPiperSDK(
+                JOINT_NUM,
+                joint_lower_limits=JOINTLOWERLIMIT,
+                joint_upper_limits=JOINTUPPERLIMIT,
             )
         else:
             raise ValueError(f"Unsupported ctrl_mode: {ctrl_mode}")
@@ -78,7 +83,7 @@ class RobotEnv(gym.Env):
     def _get_obs(self):
         joint_angles = self.ctrl.get_joint()
         ee_pos = self.ctrl.get_ee_pos()
-        ee_quat = get_quat(self.ctrl.get_ee_rotmat())
+        ee_quat = self.ctrl.get_ee_quat()
         return np.concatenate(
             [
                 joint_angles,
@@ -105,21 +110,7 @@ class RobotEnv(gym.Env):
         return self._get_obs(), {}
 
     def ctrl_gripper(self, close=True):
-        if close:
-            self.ctrl.set_joint(
-                {
-                    self.joint7_id: GRIPPER_CLOSE_POS_7,
-                    self.joint8_id: GRIPPER_CLOSE_POS_8,
-                }
-            )
-        else:
-            self.ctrl.set_joint(
-                {
-                    self.joint7_id: GRIPPER_OPEN_POS_7,
-                    self.joint8_id: GRIPPER_OPEN_POS_8,
-                }
-            )
-        self.ctrl.send_a_step()
+        self.ctrl.set_gripper(close=close)
 
     def step(self, action):
         self.step_counter += 1
@@ -146,7 +137,7 @@ class RobotEnv(gym.Env):
 
         ee_pos = self.ctrl.get_ee_pos()
         # 末端姿态四元数
-        ee_quat = get_quat(self.ctrl.get_ee_rotmat())
+        ee_quat = self.ctrl.get_ee_quat()
         dist = np.linalg.norm(ee_pos - self.target_pos)
         dir_dist = np.linalg.norm(ee_quat - self.target_quat)
         # dist(0 ~ 2) -> reward(20 ~ 0)
@@ -251,12 +242,6 @@ def gen_target_quat():
 
     # 返回格式为 [w, x, y, z]（MuJoCo 默认格式）
     return np.array([q4, q1, q2, q3])
-
-
-def get_quat(rotmat):
-    ret = np.zeros(4)
-    mujoco.mju_mat2Quat(ret, rotmat.reshape(9, -1))
-    return ret
 
 
 def norm(a, low, high):

@@ -81,25 +81,28 @@ def train():
 
 
 def test():
-    env = RobotEnv(ctrl_mode=args.ctrl_mode, render_mode="rgb_array")
-    video_dir = "./videos/"
-    env = RecordVideo(
-        env,
-        video_folder=video_dir,
-        episode_trigger=lambda e: e % 1 == 0,
-        video_length=5000,
-    )
-    model = PPO.load("ppo_piper_final_maximize_z")
-    obs = env.reset()
+    if args.record:
+        env = RobotEnv(ctrl_mode=args.ctrl_mode, render_mode="rgb_array")
+        video_dir = "./videos/"
+        env = RecordVideo(
+            env,
+            video_folder=video_dir,
+            episode_trigger=lambda e: e % 1 == 0,
+            video_length=5000,
+        )
+    else:
+        env = RobotEnv(ctrl_mode=args.ctrl_mode)
+    model = PPO.load("ppo_piper_final")
+    obs = env.reset()[0]
     for epoch in range(100000):
-        # time.sleep(1)
         action, _ = model.predict(obs)
-        obs, reward, done, _ = env.step(action)
+        obs, reward, done, _, _ = env.step(action)
 
-        # print(f"epoch {epoch}, Reward:", reward)
+        print(f"epoch {epoch}, Reward:", reward)
         if done:
             print("🎉 成功抓取，重新开始")
             obs = env.reset()
+        time.sleep(0.5)
 
 
 if __name__ == "__main__":
@@ -109,7 +112,7 @@ if __name__ == "__main__":
     parser.add_argument("--test", action="store_true", help="测试训练好的策略")
     parser.add_argument(
         "--ctrl_mode",
-        choices=["mujoco", "ros"],
+        choices=["mujoco", "ros", "piper_sdk"],
         default="mujoco",
         help="控制模式，使用mujoco仿真/ros",
     )

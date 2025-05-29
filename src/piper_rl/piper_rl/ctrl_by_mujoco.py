@@ -1,17 +1,21 @@
-import gymnasium as gym
 import numpy as np
 import mujoco
 import os
+from ctrl_base import CtrlBase
 
 
-class CtrlByMujoco:
+class CtrlByMujoco(CtrlBase):
     ee_site_name = "ee_site"
+    GRIPPER_OPEN_POS_7 = 0.0
+    GRIPPER_CLOSE_POS_7 = 0.035
+    GRIPPER_OPEN_POS_8 = 0.0
+    GRIPPER_CLOSE_POS_8 = -0.035
 
     def __init__(
         self,
-        joint_num,
-        joint_lower_limits,
-        joint_upper_limits,
+        joint_num: int,
+        joint_lower_limits: list[float],
+        joint_upper_limits: list[float],
         sim_steps=10,
         render_mode=None,
         model_path=os.path.abspath(
@@ -20,7 +24,7 @@ class CtrlByMujoco:
             )
         ),
     ):
-        self.joint_num = joint_num
+        super().__init__(joint_num, joint_lower_limits, joint_upper_limits)
         self.sim_steps = sim_steps
 
         self.model = mujoco.MjModel.from_xml_path(model_path)
@@ -45,9 +49,6 @@ class CtrlByMujoco:
             self.model, mujoco.mjtObj.mjOBJ_JOINT, "joint8"
         )
 
-        self.joint_lower_limits = joint_lower_limits
-        self.joint_upper_limits = joint_upper_limits
-
     def reset(self):
         mujoco.mj_resetData(self.model, self.data)
 
@@ -56,7 +57,7 @@ class CtrlByMujoco:
             mujoco.mj_forward(self.model, self.data)
             mujoco.mj_step(self.model, self.data)
 
-    def set_joint(self, joint_id2positions: dict):
+    def set_joint(self, joint_id2positions: dict[str, float]) -> dict[str, float]:
         """
         返回超出关节限制的量
         """
@@ -76,7 +77,7 @@ class CtrlByMujoco:
                 raise ValueError(f"Invalid joint ID: {joint_id}")
         return excess
 
-    def add_joint(self, joint_id2action: dict):
+    def add_joint(self, joint_id2action: dict[str, float]) -> dict[str, float]:
         """
         返回超出关节限制的量
         """
@@ -94,17 +95,47 @@ class CtrlByMujoco:
                 raise ValueError(f"Invalid joint ID: {joint_id}")
         return excess
 
-    def get_joint(self):
+    def get_joint(self) -> np.ndarray:
         """
-        不包括夹爪关节
+        不包括夹爪关节，单位: 弧度
         """
         return np.array([self.data.qpos[joint_id] for joint_id in self.actuator_ids])
 
-    def get_ee_pos(self):
+    def get_ee_pos(self) -> np.ndarray:
+        """
+        单位: m
+        """
         return np.array(self.data.site(self.ee_site_name).xpos.copy())
 
-    def get_ee_rotmat(self):
-        return self.data.site(self.ee_site_name).xmat.reshape(3, 3).copy()
+    def get_ee_quat(self) -> np.ndarray:
+        """
+        获取末端执行器的姿态四元数
+        """
+        rotmat = self.data.site(self.ee_site_name).xmat.reshape(3, 3).copy()
+        ret = np.zeros(4)
+        mujoco.mju_mat2Quat(ret, rotmat.reshape(9, -1))
+        return ret
+
+    def set_gripper(self, close: bool = True):
+        """
+        控制夹爪开合
+        :param close: True表示闭合夹爪，False表示张开夹爪
+        """
+        if close:
+            self.ctrl.set_joint(
+                {
+                    self.joint7_id: self.GRIPPER_CLOSE_POS_7,
+                    self.joint8_id: self.GRIPPER_CLOSE_POS_8,
+                }
+            )
+        else:
+            self.ctrl.set_joint(
+                {
+                    self.joint7_id: self.GRIPPER_OPEN_POS_7,
+                    self.joint8_id: self.GRIPPER_OPEN_POS_8,
+                }
+            )
+        self.send_a_step()
 
     def render(self):
         if self.render_mode is None:
