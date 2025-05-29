@@ -23,6 +23,7 @@ def make_env(MyRobotEnv, ctrl_mode, worker_id):
 
 
 def train():
+    print("🚀 进程数:", args.proc)
     if args.proc > 1:
         if not args.ctrl_mode == "mujoco":
             raise ValueError("多进程仿真只支持 mujoco 模式")
@@ -35,7 +36,6 @@ def train():
             start_method="spawn",
         )
     else:
-        # 多进程仿真不支持录制
         if args.record:
             # 需要 export MUJOCO_GL=egl
             os.environ["MUJOCO_GL"] = "egl"
@@ -54,7 +54,7 @@ def train():
         env=env,
         device="cpu",
         policy_kwargs=dict(
-            net_arch=[256, 512, 256, 128],
+            net_arch=[256, 512, 512, 128],
             log_std_init=-2.0,
             ortho_init=True,
         ),
@@ -68,7 +68,7 @@ def train():
         ent_coef=1e-2,
         tensorboard_log="./ppo_logs/",
     )
-    # model.set_parameters("ppo_piper_final_best.zip")
+    # model.set_parameters("ppo_piper_final.zip")
 
     checkpoint_callback = CheckpointCallback(
         save_freq=100000, save_path="./ppo_models/", name_prefix="piper_rl_checkpoint"
