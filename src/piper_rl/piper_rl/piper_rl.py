@@ -5,12 +5,13 @@ import os
 import cv2
 import math
 import random
-from ctrl_by_mujoco import CtrlByMujoco
-from ctrl_by_piper_sdk import CtrlByPiperSDK
+import sys
 
-JOINT_NUM = 6
-JOINTLOWERLIMIT = [-2.618, 0.0, -2.967, -1.745, -1.22, -2.0944]
-JOINTUPPERLIMIT = [2.618, 3.14, 0.0, 1.745, 1.22, 2.0944]
+sys.path.append(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
+from piper_control.piper_control.ctrl_by_mujoco import CtrlByMujoco
+from piper_control.piper_control.ctrl_by_piper_sdk import CtrlByPiperSDK
 
 
 class RobotEnv(gym.Env):
@@ -35,19 +36,12 @@ class RobotEnv(gym.Env):
         elif ctrl_mode == "mujoco":
             self.render_mode = render_mode
             self.ctrl = CtrlByMujoco(
-                JOINT_NUM,
-                JOINTLOWERLIMIT,
-                JOINTUPPERLIMIT,
                 render_mode=self.render_mode,
             )
         elif ctrl_mode == "piper_sdk":
             if render_mode:
                 raise ValueError("Piper SDK mode does not support rendering.")
-            self.ctrl = CtrlByPiperSDK(
-                JOINT_NUM,
-                joint_lower_limits=JOINTLOWERLIMIT,
-                joint_upper_limits=JOINTUPPERLIMIT,
-            )
+            self.ctrl = CtrlByPiperSDK()
         else:
             raise ValueError(f"Unsupported ctrl_mode: {ctrl_mode}")
 
@@ -62,19 +56,21 @@ class RobotEnv(gym.Env):
 
         # 动作空间：6个关节增量
         self.action_space = gym.spaces.Box(
-            low=np.array([-0.5] * (JOINT_NUM - 1) + [-0.05], dtype=np.float32),
-            high=np.array([0.5] * (JOINT_NUM - 1) + [0.05], dtype=np.float32),
+            low=np.array(
+                [-0.5] * (self.ctrl.joint_num - 1) + [-0.05], dtype=np.float32
+            ),
+            high=np.array([0.5] * (self.ctrl.joint_num - 1) + [0.05], dtype=np.float32),
             dtype=np.float32,
         )
 
         # 观测空间：6个关节角度 + ee位置(xyz) + 目标点(xyz) + ee姿态四元数 + 目标姿态四元数
         self.observation_space = gym.spaces.Box(
             low=np.array(
-                JOINTLOWERLIMIT + [-np.inf] * 6 + [-1.0] * 8,
+                self.ctrl.joint_lower_limits + [-np.inf] * 6 + [-1.0] * 8,
                 dtype=np.float32,
             ),
             high=np.array(
-                JOINTUPPERLIMIT + [np.inf] * 6 + [1.0] * 8,
+                self.ctrl.joint_upper_limits + [np.inf] * 6 + [1.0] * 8,
                 dtype=np.float32,
             ),
             dtype=np.float32,
@@ -206,7 +202,8 @@ class RobotEnv(gym.Env):
         return self.ctrl.render()
 
     def set_target_pos(self):
-        self.target_pos = np.random.uniform(low=[0.2, -0.2, 0.2], high=[0.3, 0.2, 0.4])
+        # self.target_pos = np.random.uniform(low=[0.2, -0.2, 0.2], high=[0.3, 0.2, 0.4])
+        self.target_pos = np.array((0.287, 0.015, 0.304))
 
         # # 获取三个 joint 的 qpos 索引
         # x_id = self.model.jnt_qposadr[

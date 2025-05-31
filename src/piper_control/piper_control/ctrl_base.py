@@ -2,15 +2,12 @@ import numpy as np
 
 
 class CtrlBase(object):
-    def __init__(
-        self,
-        joint_num: int,
-        joint_lower_limits: list[float],
-        joint_upper_limits: list[float],
-    ):
-        self.joint_num = joint_num
-        self.joint_lower_limits = joint_lower_limits
-        self.joint_upper_limits = joint_upper_limits
+    joint_num = 6
+    joint_lower_limits = [-2.618, 0.0, -2.967, -1.745, -1.22, -2.0944]
+    joint_upper_limits = [2.618, 3.14, 0.0, 1.745, 1.22, 2.0944]
+
+    def __init__(self):
+        pass
 
     def reset(self):
         """

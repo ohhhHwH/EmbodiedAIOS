@@ -7,11 +7,8 @@ from ctrl_base import CtrlBase
 class CtrlByPiperSDK(CtrlBase):
     def __init__(
         self,
-        joint_num: int,
-        joint_lower_limits: list[float],
-        joint_upper_limits: list[float],
     ):
-        super().__init__(joint_num, joint_lower_limits, joint_upper_limits)
+        super().__init__()
         self.actuator_ids = [i for i in range(self.joint_num)]
         # 统一是弧度
         self.joints_state_ctrl = np.zeros(self.joint_num, dtype=np.float32)

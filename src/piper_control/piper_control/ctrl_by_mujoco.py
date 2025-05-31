@@ -1,7 +1,7 @@
 import numpy as np
 import mujoco
 import os
-from ctrl_base import CtrlBase
+from .ctrl_base import CtrlBase
 
 
 class CtrlByMujoco(CtrlBase):
@@ -13,9 +13,6 @@ class CtrlByMujoco(CtrlBase):
 
     def __init__(
         self,
-        joint_num: int,
-        joint_lower_limits: list[float],
-        joint_upper_limits: list[float],
         sim_steps=10,
         render_mode=None,
         model_path=os.path.abspath(
@@ -24,7 +21,7 @@ class CtrlByMujoco(CtrlBase):
             )
         ),
     ):
-        super().__init__(joint_num, joint_lower_limits, joint_upper_limits)
+        super().__init__()
         self.sim_steps = sim_steps
 
         self.model = mujoco.MjModel.from_xml_path(model_path)
@@ -101,17 +98,23 @@ class CtrlByMujoco(CtrlBase):
         """
         return np.array([self.data.qpos[joint_id] for joint_id in self.actuator_ids])
 
-    def get_ee_pos(self) -> np.ndarray:
+    def get_ee_pos(self, site_name=None) -> np.ndarray:
         """
         单位: m
         """
-        return np.array(self.data.site(self.ee_site_name).xpos.copy())
+        return np.array(
+            self.data.site(site_name if site_name else self.ee_site_name).xpos.copy()
+        )
 
-    def get_ee_quat(self) -> np.ndarray:
+    def get_ee_quat(self, site_name=None) -> np.ndarray:
         """
-        获取末端执行器的姿态四元数
+        获取末端执行器的姿态四元数，格式为 [w, x, y, z]（MuJoCo 默认格式）
         """
-        rotmat = self.data.site(self.ee_site_name).xmat.reshape(3, 3).copy()
+        rotmat = (
+            self.data.site(site_name if site_name else self.ee_site_name)
+            .xmat.reshape(3, 3)
+            .copy()
+        )
         ret = np.zeros(4)
         mujoco.mju_mat2Quat(ret, rotmat.reshape(9, -1))
         return ret

@@ -82,7 +82,9 @@ def train():
 
 def test():
     if args.record:
-        env = RobotEnv(ctrl_mode=args.ctrl_mode, render_mode="rgb_array")
+        env = RobotEnv(
+            ctrl_mode=args.ctrl_mode, render_mode="rgb_array", log_interval=1
+        )
         video_dir = "./videos/"
         env = RecordVideo(
             env,
@@ -91,7 +93,7 @@ def test():
             video_length=5000,
         )
     else:
-        env = RobotEnv(ctrl_mode=args.ctrl_mode)
+        env = RobotEnv(ctrl_mode=args.ctrl_mode, log_interval=1)
     model = PPO.load("ppo_piper_final")
     obs = env.reset()[0]
     for epoch in range(100000):
@@ -114,7 +116,7 @@ if __name__ == "__main__":
         "--ctrl_mode",
         choices=["mujoco", "ros", "piper_sdk"],
         default="mujoco",
-        help="控制模式，使用mujoco仿真/ros",
+        help="控制模式，使用mujoco仿真/ros/piper_sdk控制机械臂",
     )
     parser.add_argument(
         "--record",
@@ -126,6 +128,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if args.ctrl_mode == "ros":
         print("🚀 使用ros控制")
+    elif args.ctrl_mode == "piper_sdk":
+        print("🚀 使用Piper SDK控制")
     else:
         print("🚀 使用Mujoco仿真")
 

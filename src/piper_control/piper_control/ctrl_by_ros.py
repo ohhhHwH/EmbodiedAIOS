@@ -7,9 +7,9 @@ import numpy as np
 
 
 class CtrlByROS:
-    def __init__(self, joint_num=6):
+    def __init__(self):
+        super().__init__()
         self.current_joint_states = None
-        self.joint_num = joint_num
         rclpy.init(args=None)
         self.node = rclpy.create_node("my_robot_rl_env")
         self.node.create_subscription(
