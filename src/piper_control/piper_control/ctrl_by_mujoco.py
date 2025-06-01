@@ -51,7 +51,6 @@ class CtrlByMujoco(CtrlBase):
 
     def send_a_step(self):
         for _ in range(self.sim_steps):
-            mujoco.mj_forward(self.model, self.data)
             mujoco.mj_step(self.model, self.data)
 
     def set_joint(self, joint_id2positions: dict[str, float]) -> dict[str, float]:

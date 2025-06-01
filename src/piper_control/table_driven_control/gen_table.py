@@ -16,6 +16,8 @@ from piper_control.piper_control.ctrl_by_mujoco import CtrlByMujoco
 # 步长，弧度
 STRIDE = 1 / 180 * np.pi
 anthropomorphic_site_name = "anthropomorphic_arm"
+lower = CtrlByMujoco.joint_lower_limits
+upper = CtrlByMujoco.joint_upper_limits
 
 
 def quat_to_euler(quat: np.ndarray) -> np.ndarray:
@@ -65,9 +67,8 @@ def sim_a_range(joint_1, lower, upper, anthropomorphic, result_queue):
     combinations = itertools.product(*ranges)
     for idx, c in enumerate(combinations):
         ctrl.reset()
-        joints = {0: joint_1, 1: c[0], 2: c[1]}
-        ctrl.set_joint(joints)
-        ctrl.send_a_step()
+        ctrl.data.qpos[:] = [joint_1, c[0], c[1]]
+        mujoco.mj_forward(ctrl.model, ctrl.data)
         # print(joints)
         if anthropomorphic:
             ee_pos, ee_euler = get_anthropomorphic_pose(ctrl)
@@ -81,8 +82,6 @@ def sim_a_range(joint_1, lower, upper, anthropomorphic, result_queue):
                 "ee_eular": ee_euler,
             }
         )
-        print(f"\rProcessing: {idx + 1}/{np.prod([len(r) for r in ranges])}", end="")
-    print()  # New line after processing
     return f"Joint 1: {joint_1}, Anthropomorphic: {anthropomorphic}, Completed!"
 
 
@@ -92,22 +91,30 @@ def collect_results(result):
 
 def writer(result_queue, filename):
     with open(
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), filename), "w"
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), filename), "wb"
     ) as f:
-        f.write("Joint Angles, End Effector Position, End Effector Euler Angles\n")
+        # f.write("Joint Angles, End Effector Position, End Effector Euler Angles\n")
+        cnt = 0
         while True:
             result = result_queue.get()
             if result is None:
                 break
-            f.write(f"{result['joints']}, {result['ee_pos']}, {result['ee_eular']}\n")
+            # f.write(f"{result['joints']}, {result['ee_pos']}, {result['ee_eular']}\n")
+            f.write(result["joints"].tobytes())
+            f.write(result["ee_pos"].tobytes())
+            f.write(result["ee_eular"].tobytes())
+
+            if cnt % 1000 == 0:
+                print(f"\rProcessing: {cnt}", end="")
+            cnt += 1
 
 
 def main():
+    print("cpu_count:", cpu_count())
     with Manager() as manager:
         p = Pool(cpu_count())
+        # p = Pool(1)
         result_queue = manager.Queue()
-        lower = CtrlByMujoco.joint_lower_limits
-        upper = CtrlByMujoco.joint_upper_limits
         for joint_1 in np.arange(lower[0], upper[0], STRIDE):
             p.apply_async(
                 sim_a_range,
