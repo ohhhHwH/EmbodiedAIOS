@@ -1,22 +1,19 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
-from geometry_msgs.msg import PointStamped, Point
 from std_msgs.msg import Empty          # 触发器消息类型，可替换为你需要的类型
 
-import tf2_ros
-import tf2_geometry_msgs
-import subprocess
 import json
 import cv2
 from cv_bridge import CvBridge
 import os
 from datetime import datetime
-import s3img
+from piper_vision import s3img
 # 通过 pip install volcengine-python-sdk[ark] 安装方舟SDK
 from volcenginesdkarkruntime import Ark
 from typing import Dict, List
 from piper_msgs.msg import AllObjectPos
+import traceback 
 
 
 # 替换 <Model> 为模型的Model ID
@@ -46,10 +43,10 @@ class VLMMapperNode(Node):
         self.trigger_sub = self.create_subscription(
             Empty, '/detection_trigger', self.on_trigger, 10
         )
-
+    
         # ---------- 其他 ----------
-        # self.tf_buffer = tf2_ros.Buffer()
-        # self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
+        if not os.getenv('ARK_API_KEY'):
+            raise RuntimeError("请设置环境变量 ARK_API_KEY")
         self.vlmclient = Ark(api_key=os.getenv('ARK_API_KEY'))
         self.get_logger().info("📸 VLM 图像识别与坐标记录节点启动")
 
@@ -57,10 +54,12 @@ class VLMMapperNode(Node):
     # ① 图像缓存：每到一帧就立即保存，但只保存最新一张
     # ------------------------------------------------------------------
     def image_callback(self, msg: Image):
+        self.get_logger().debug("📸 收到新图像消息，开始处理...")
         cv_image = self.bridge.imgmsg_to_cv2(msg, 'bgr8')
-        now = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]  # 毫秒级
-        img_path = f"images/{now}.jpg"
+        now = datetime.now().strftime("%Y%m%d_%H%M%S")
+        # img_path = f"images/{now}.jpg"
         os.makedirs("images", exist_ok=True)
+        img_path = f"images/images_now.jpg"
         cv2.imwrite(img_path, cv_image)
 
         # 更新缓存
@@ -96,10 +95,15 @@ class VLMMapperNode(Node):
             return
 
         # 1) 调用 VLM 识别
-        vlm_result = self.call_doubao(self.latest_img_path)
+        vlm_result = self.call_doubao_rm_dup(self.latest_img_path)
         if vlm_result is None:
             self.get_logger().error("❌ VLM 识别失败")
             return
+        # 根据vlm_result，过滤objects中的东西
+        self.get_logger().info("过滤前： %s" % str(self.latest_data["objects"]))
+        filtered_objects = [obj for obj in self.latest_data["objects"] if obj["name"] in vlm_result]
+        self.latest_data["objects"] = filtered_objects
+        self.get_logger().info("过滤后： %s" % str(self.latest_data["objects"]))
 
         # 2) 合并两路结果
         record = {
@@ -136,6 +140,30 @@ class VLMMapperNode(Node):
             )
             return json.loads(resp.choices[0].message.content)
         except Exception as e:
+            self.get_logger().error(f"doubao 调用失败: {e}")
+            return None
+        
+    def call_doubao_rm_dup(self, img_path: str) -> list | None:
+        list_objects = [obj["name"] for obj in self.latest_data["objects"]]
+        self.get_logger().info("prompt: %s" % list_objects)
+        # 去重
+        try:
+            # 假设 s3img.upload_file(img_path) 返回公网 URL
+            img_url = s3img.upload_file(file_name = img_path)
+            resp = self.vlmclient.chat.completions.create(
+                model=vlmmodel,
+                messages=[
+                    {"role": "user", "content": [
+                        {"type": "text",
+                         "text": "请你查看这张图片中是否包含以下物品，包含的物品请按原名称直接以 JSON list 返回, 不要有其他文字说明: " + str([obj["name"] for obj in self.latest_data["objects"]])},
+                        {"type": "image_url", "image_url": {"url": img_url}},
+                    ]}
+                ],
+            )
+            self.get_logger().info("resp: %s " % resp.choices[0].message.content)
+            return json.loads(resp.choices[0].message.content)
+        except Exception as e:
+            error_msg = traceback.format_exc()  # This will include file name, line number, and call stack
             self.get_logger().error(f"doubao 调用失败: {e}")
             return None
 
