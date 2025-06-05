@@ -22,7 +22,7 @@
                     <inertial pos="-0.0202738 -0.133915 -0.000458683" quat="0.528127 0.491307 -0.505056 0.473938" mass="0.219942" diaginertia="0.000201238 0.000190068 7.08709e-05" />
                     <joint name="joint3" pos="0 0 0" axis="0 0 1" limited="true" range="-2.967 0" damping="20"/>
                     <geom type="mesh" rgba="0.792157 0.819608 0.933333 1" mesh="link3" />
-                    <site name="anthropomorphic_arm" pos="-0.021984 -0.25075 0" size="0.01" rgba="1 0 0 1"/>
+                    <site name="ee_site" pos="-0.021984 -0.25075 0" size="0.01" rgba="1 0 0 1"/>
                 </body>
             </body>
         </body>

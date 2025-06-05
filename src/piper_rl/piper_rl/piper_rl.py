@@ -18,7 +18,7 @@ class RobotEnv(gym.Env):
     def __init__(
         self,
         ctrl_mode: str,
-        render_mode=None,
+        render=False,
         log_interval=1024,
         capture_interval=None,
         max_step=100000,
@@ -30,17 +30,12 @@ class RobotEnv(gym.Env):
         self.max_step = max_step
 
         if ctrl_mode == "ros":
-            if render_mode:
-                raise ValueError("ROS mode does not support rendering.")
             raise NotImplementedError()
         elif ctrl_mode == "mujoco":
-            self.render_mode = render_mode
             self.ctrl = CtrlByMujoco(
-                render_mode=self.render_mode,
+                render=render,
             )
         elif ctrl_mode == "piper_sdk":
-            if render_mode:
-                raise ValueError("Piper SDK mode does not support rendering.")
             self.ctrl = CtrlByPiperSDK()
         else:
             raise ValueError(f"Unsupported ctrl_mode: {ctrl_mode}")

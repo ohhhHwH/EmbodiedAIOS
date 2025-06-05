@@ -3,14 +3,12 @@
     <compiler angle="radian" />
     <size njmax="500" nconmax="100" />
     <asset>
-        <mesh name="base_link" file="../meshes/base_link.STL" />
         <mesh name="link4" file="../meshes/link4.STL" />
         <mesh name="link5" file="../meshes/link5.STL" />
         <mesh name="link6" file="../meshes/link6.STL" />
     </asset>
     <worldbody>
-        <geom type="mesh" rgba="0.792157 0.819608 0.933333 1" mesh="base_link" />
-            <body name="link4" pos="0 0 0" quat="0.707105 0.707108 0 0">
+            <body name="link4" pos="0 0 0" quat="1 0 0 0">
                 <inertial pos="-9.66636e-05 0.000876064 -0.00496881" quat="0.512749 0.48584 0.481646 0.518714" mass="0.131814" diaginertia="5.1333e-05 4.14831e-05 3.96892e-05" />
                 <joint name="joint1" pos="0 0 0" axis="0 0 1" limited="true" range="-1.745 1.745" damping="5"/>
                 <geom type="mesh" rgba="0.792157 0.819608 0.933333 1" mesh="link4" />
@@ -22,7 +20,7 @@
                         <inertial pos="-0.000179422 7.72241e-05 0.0305765" quat="0.498967 0.497649 -0.502223 0.501147" mass="0.152309" diaginertia="0.000119759 0.000110059 4.99704e-05" />
                         <joint name="joint3" pos="0 0 0" axis="0 0 1" limited="true" range="-2.0944 2.0944" damping="0.1"/>
                         <geom type="mesh" rgba="0.898039 0.917647 0.929412 1" mesh="link6" />
-                        <site name="ee_site" pos="0 0 0.2" size="0.01" rgba="1 0 0 1"/>
+                        <site name="ee_site" pos="0 0 0" size="0.01" rgba="1 0 0 1"/>
                     </body>
                 </body>
             </body>

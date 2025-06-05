@@ -14,7 +14,7 @@ class CtrlByMujoco(CtrlBase):
     def __init__(
         self,
         sim_steps=10,
-        render_mode=None,
+        render=False,
         model_path=os.path.abspath(
             os.path.join(
                 "./src/piper_description", "mujoco_model", "piper_description.xml"
@@ -31,12 +31,11 @@ class CtrlByMujoco(CtrlBase):
             for i in range(self.joint_num)
         ]
 
-        self.render_mode = render_mode
-        if self.render_mode:
-            self.renderer = mujoco.Renderer(self.model)
+        if render:
+            self.renderer = mujoco.Renderer(self.model, height=480, width=640)
             self.cam = mujoco.MjvCamera()
             # 视距，拉远看整个机械臂
-            self.cam.distance = 2.0
+            self.cam.distance = 1.5
 
         # 两个夹爪的 ID
         self.joint7_id = mujoco.mj_name2id(
@@ -140,14 +139,9 @@ class CtrlByMujoco(CtrlBase):
         self.send_a_step()
 
     def render(self):
-        if self.render_mode is None:
-            return
-        if self.render_mode == "rgb_array":
-            self.renderer.update_scene(self.data, camera=self.cam)
-            return self.renderer.render()
-        elif self.render_mode == "human":
-            if not hasattr(self, "viewer"):
-                self.viewer = mujoco.viewer.launch_passive(self.model, self.data)
-            self.viewer.sync()
-        else:
-            raise ValueError("Invalid render mode. Use 'rgb_array' or 'human'.")
+        if not hasattr(self, "renderer"):
+            raise RuntimeError(
+                "Renderer not initialized. Set render=True in constructor."
+            )
+        self.renderer.update_scene(self.data, camera=self.cam)
+        return self.renderer.render()

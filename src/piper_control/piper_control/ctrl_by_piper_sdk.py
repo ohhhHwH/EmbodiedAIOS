@@ -131,7 +131,7 @@ class CtrlByPiperSDK(CtrlBase):
         )
 
     def render(self):
-        print("Rendering is not supported in Piper SDK control mode.")
+        raise RuntimeError("Rendering is not supported in Piper SDK control mode.")
 
     def _enable_fun(self) -> bool:
         """

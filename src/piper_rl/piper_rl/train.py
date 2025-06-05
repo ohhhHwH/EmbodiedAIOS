@@ -38,8 +38,7 @@ def train():
     else:
         if args.record:
             # 需要 export MUJOCO_GL=egl
-            os.environ["MUJOCO_GL"] = "egl"
-            env = RobotEnv(ctrl_mode=args.ctrl_mode, render_mode="rgb_array")
+            env = RobotEnv(ctrl_mode=args.ctrl_mode, render=True)
             video_dir = "./videos/"
             env = RecordVideo(
                 env,
@@ -82,9 +81,7 @@ def train():
 
 def test():
     if args.record:
-        env = RobotEnv(
-            ctrl_mode=args.ctrl_mode, render_mode="rgb_array", log_interval=1
-        )
+        env = RobotEnv(ctrl_mode=args.ctrl_mode, render=True, log_interval=1)
         video_dir = "./videos/"
         env = RecordVideo(
             env,

@@ -4,6 +4,9 @@ import os
 import numpy as np
 import itertools
 from multiprocessing import Pool, cpu_count, Process, Manager
+from scipy.spatial import KDTree
+from scipy.spatial.transform import Rotation as R
+import pickle
 
 # from queue import
 
@@ -18,33 +21,6 @@ STRIDE = 1 / 180 * np.pi
 anthropomorphic_site_name = "anthropomorphic_arm"
 lower = CtrlByMujoco.joint_lower_limits
 upper = CtrlByMujoco.joint_upper_limits
-
-
-def quat_to_euler(quat: np.ndarray) -> np.ndarray:
-    """
-    将四元数转换为欧拉角
-    :param quat: 四元数 [qw, qx, qy, qz]
-    :return: 欧拉角 [roll, pitch, yaw]，单位为弧度
-    """
-    w, x, y, z = quat[0], quat[1], quat[2], quat[3]
-    roll = np.arctan2(2.0 * (y * z + w * x), w * w - x * x - y * y + z * z)
-    pitch = np.arcsin(-2.0 * (x * z - w * y))
-    yaw = np.arctan2(2.0 * (x * y + w * z), w * w + x * x - y * y - z * z)
-    return np.array([roll, pitch, yaw])
-
-
-def get_anthropomorphic_pose(ctrl: CtrlByMujoco) -> tuple[np.ndarray, np.ndarray]:
-    return (
-        ctrl.get_ee_pos(site_name=anthropomorphic_site_name),
-        quat_to_euler(ctrl.get_ee_quat(site_name=anthropomorphic_site_name)),
-    )
-
-
-def get_ee_pose(ctrl: CtrlByMujoco) -> tuple[np.ndarray, np.ndarray]:
-    return (
-        ctrl.get_ee_pos(),
-        quat_to_euler(ctrl.get_ee_quat()),
-    )
 
 
 def sim_a_range(joint_1, lower, upper, anthropomorphic, result_queue):
@@ -63,23 +39,19 @@ def sim_a_range(joint_1, lower, upper, anthropomorphic, result_queue):
             ),
         ),
     )
+    ctrl.reset()
     ranges = [np.arange(l, u, STRIDE) for l, u in zip(lower, upper)]
     combinations = itertools.product(*ranges)
     for idx, c in enumerate(combinations):
-        ctrl.reset()
         ctrl.data.qpos[:] = [joint_1, c[0], c[1]]
         mujoco.mj_forward(ctrl.model, ctrl.data)
         # print(joints)
-        if anthropomorphic:
-            ee_pos, ee_euler = get_anthropomorphic_pose(ctrl)
-        else:
-            ee_pos, ee_euler = get_ee_pose(ctrl)
-        # print(ee_pos, ee_euler)
+        # print(ee_pos, ee_quat)
         result_queue.put(
             {
                 "joints": ctrl.get_joint()[:3],
-                "ee_pos": ee_pos,
-                "ee_eular": ee_euler,
+                "ee_pos": ctrl.get_ee_pos(),
+                "ee_quat": ctrl.get_ee_quat(),
             }
         )
     return f"Joint 1: {joint_1}, Anthropomorphic: {anthropomorphic}, Completed!"
@@ -89,24 +61,46 @@ def collect_results(result):
     print(result)
 
 
-def writer(result_queue, filename):
-    with open(
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), filename), "wb"
-    ) as f:
-        # f.write("Joint Angles, End Effector Position, End Effector Euler Angles\n")
-        cnt = 0
-        while True:
-            result = result_queue.get()
-            if result is None:
-                break
-            # f.write(f"{result['joints']}, {result['ee_pos']}, {result['ee_eular']}\n")
-            f.write(result["joints"].tobytes())
-            f.write(result["ee_pos"].tobytes())
-            f.write(result["ee_eular"].tobytes())
+def build_kdtree(result_queue, filename, anthropomorphic):
+    li = []
+    kdtree_li = []
+    while True:
+        result = result_queue.get()
+        if result is None:
+            break
+        if anthropomorphic:
+            li.append(
+                (
+                    R.from_quat(result["ee_quat"]).as_rotvec().astype(np.float32),
+                    result["joints"],
+                )
+            )
+            kdtree_li.append(result["ee_pos"])
+        else:
+            li.append(result["joints"])
+            kdtree_li.append(
+                R.from_quat(result["ee_quat"]).as_rotvec().astype(np.float32)
+            )
 
-            if cnt % 1000 == 0:
-                print(f"\rProcessing: {cnt}", end="")
-            cnt += 1
+    print("\nBuilding KDTree...")
+    kdtree = KDTree(np.array(kdtree_li, dtype=np.float32))
+    li = np.array(li, dtype=np.float32)
+    with open(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), filename),
+        "wb",
+    ) as f:
+        pickle.dump((kdtree, li), f)
+    print(f"KDTree built with {len(kdtree_li)} points.")
+
+    # with open(
+    #     os.path.join(
+    #         os.path.dirname(os.path.abspath(__file__)),
+    #         filename.replace(".kdtree", ".txt"),
+    #     ),
+    #     "w",
+    # ) as f:
+    #     for item_1, item_2 in zip(kdtree_li, li):
+    #         f.write(f"{item_1.tolist()} {item_2.tolist()}\n")
 
 
 def main():
@@ -124,7 +118,10 @@ def main():
             )
 
         p.close()
-        pro = Process(target=writer, args=(result_queue, "anthropomorphic_results.txt"))
+        pro = Process(
+            target=build_kdtree,
+            args=(result_queue, "anthropomorphic.kdtree", True),
+        )
         pro.start()
         p.join()
         result_queue.put(None)  # Signal the writer to stop
@@ -133,7 +130,7 @@ def main():
     with Manager() as manager:
         p = Pool(cpu_count())
         result_queue = manager.Queue()
-        for joint_4 in np.arange(lower[3], upper[3], STRIDE):
+        for joint_4 in np.arange(lower[3], upper[3], STRIDE * 10):
             p.apply_async(
                 sim_a_range,
                 args=(joint_4, lower[4:6], upper[4:6], False, result_queue),
@@ -142,7 +139,10 @@ def main():
             )
 
         p.close()
-        pro = Process(target=writer, args=(result_queue, "wrist_results.txt"))
+        pro = Process(
+            target=build_kdtree,
+            args=(result_queue, "wrist.kdtree", False),
+        )
         pro.start()
         p.join()
         result_queue.put(None)  # Signal the writer to stop
