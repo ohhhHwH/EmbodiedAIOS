@@ -2,47 +2,73 @@ import numpy as np
 import time
 from piper_sdk import C_PiperInterface_V2
 from ctrl_base import CtrlBase
+from scipy.spatial.transform import Rotation as R
 
 
 class CtrlByPiperSDK(CtrlBase):
+    FACTOR = 1000.0
+
     def __init__(
         self,
+        move_mode_end_pose: bool = False,
     ):
+        """
+        move_mode: int
+        0: 末端位姿控制
+        1: 关节角度控制
+        """
         super().__init__()
+        self.move_mode_end_pose = move_mode_end_pose
         self.actuator_ids = [i for i in range(self.joint_num)]
         # 统一是弧度
         self.joints_state_ctrl = np.zeros(self.joint_num, dtype=np.float32)
 
         self.piper = C_PiperInterface_V2("can0")
         self.piper.ConnectPort()
+        self.piper.JointConfig(clear_err=0xAE)
         if not self._enable_fun():
+            print(self.piper.GetArmStatus())
             raise RuntimeError("Failed to enable Piper arm.")
-        self.reset()
+        self.reset(self.move_mode_end_pose)
         # print(self.piper.GetArmGripperMsgs())
         # print(self.piper.GetAllMotorAngleLimitMaxSpd())
 
     def __del__(self):
         """
-        确保在对象销毁时禁用机械臂
+        确保在对象销毁时复原并禁用机械臂
         """
-        self.reset()
-        time.sleep(2)
+        self.reset(move_mode_end_pose=False)
+        print("Resetting Piper arm to initial state.")
+        # time.sleep(2)
         self.disable()
 
-    def reset(self):
-        self.joints_state_ctrl = np.zeros(self.joint_num, dtype=np.float32)
-        # self.piper.MotionCtrl_1(emergency_stop=0x02, track_ctrl=0, grag_teach_ctrl=0)
-        # TODO: 看看mit模式是什么，据说响应速度更快
-        self.piper.MotionCtrl_2(
-            ctrl_mode=0x01, move_mode=0x01, move_spd_rate_ctrl=50, is_mit_mode=0x00
-        )
-        # self.piper.EndPoseCtrl(X=0, Y=0, Z=0, RX=0, RY=0, RZ=0)
-        self.set_joint({id: self.joints_state_ctrl[id] for id in self.actuator_ids})
-        self.send_a_step()
+    def reset(self, move_mode_end_pose: bool = None, timeout: int = 5):
+        self.piper.JointConfig(clear_err=0xAE)
+        self.piper.CrashProtectionConfig(0, 0, 0, 0, 0, 0)
+        self.set_move_mode(move_mode_end_pose=False, timeout=timeout)
+        self.piper.JointCtrl(0, 0, 0, 0, 0, 0)
+        start = time.time()
+        while True:
+            status = self.piper.GetArmStatus()
+            if status.arm_status.motion_status == 0x00:
+                break
+            if time.time() - start > timeout:
+                raise TimeoutError("Failed to reset within the specified timeout.")
         self.set_gripper(close=False)
 
+        if move_mode_end_pose is None:
+            move_mode_end_pose = self.move_mode_end_pose
+        else:
+            self.move_mode_end_pose = move_mode_end_pose
+        if move_mode_end_pose:
+            self.set_move_mode(move_mode_end_pose=True, timeout=timeout)
+
     def send_a_step(self):
-        ctrl = np.degrees(self.joints_state_ctrl) * 1000.0
+        if self.move_mode_end_pose:
+            raise RuntimeError(
+                "Cannot send a step in end-effector pose control mode. Please switch to joint control mode by reset(False)."
+            )
+        ctrl = np.degrees(self.joints_state_ctrl) * self.FACTOR
         self.piper.JointCtrl(
             joint_1=int(ctrl[0]),
             joint_2=int(ctrl[1]),
@@ -96,12 +122,12 @@ class CtrlByPiperSDK(CtrlBase):
                 ],
                 dtype=np.float32,
             )
-            / 1000.0
+            / self.FACTOR
         )
 
     def get_gripper(self) -> float:
         gripper_msgs = self.piper.GetArmGripperMsgs()
-        return gripper_msgs.gripper_state.grippers_angle / 1000.0 / 1000.0
+        return gripper_msgs.gripper_state.grippers_angle / self.FACTOR / 1000.0
 
     def get_ee_pos(self) -> np.ndarray:
         end_pose = self.piper.GetArmEndPoseMsgs().end_pose
@@ -110,21 +136,55 @@ class CtrlByPiperSDK(CtrlBase):
                 [end_pose.X_axis, end_pose.Y_axis, end_pose.Z_axis],
                 dtype=np.float32,
             )
-            / 1000.0
+            / self.FACTOR
             / 1000.0
         )
 
     def get_ee_quat(self) -> np.ndarray:
         end_pose = self.piper.GetArmEndPoseMsgs().end_pose
-        return (
-            self._euler2quat([end_pose.RX_axis, end_pose.RY_axis, end_pose.RZ_axis])
-            / 1000.0
+        return R.from_euler(
+            "zyx",
+            np.array([end_pose.RX_axis, end_pose.RY_axis, end_pose.RZ_axis])
+            / self.FACTOR,
+            degrees=True,
+        ).as_quat()
+
+    def set_ee_pose(
+        self, position: list[float], euler_angles: list[float], timeout: int = 5
+    ):
+        """
+        设置末端执行器位置和姿态
+        :param position: 末端执行器位置 [x, y, z] 单位为米
+        :param euler_angles: 欧拉角 [roll, pitch, yaw] 单位为度
+        """
+        if self.move_mode_end_pose is False:
+            raise RuntimeError(
+                "Cannot set end-effector pose in joint control mode. Please switch to end pose control mode by reset(True)."
+            )
+        position = np.array(position) * self.FACTOR * 1000.0
+        euler_angles = np.array(euler_angles) * self.FACTOR
+        self.piper.EndPoseCtrl(
+            X=int(position[0]),
+            Y=int(position[1]),
+            Z=int(position[2]),
+            RX=int(euler_angles[0]),
+            RY=int(euler_angles[1]),
+            RZ=int(euler_angles[2]),
         )
+
+        start = time.time()
+        while True:
+            if self.piper.GetArmStatus().arm_status.motion_status == 0x00:
+                print("End-effector pose set successfully.")
+                break
+            if time.time() - start > timeout:
+                print("Failed to set end-effector pose within the specified timeout.")
+                break
 
     def set_gripper(self, close: bool = True):
         # 50 mm
         self.piper.GripperCtrl(
-            0 if close else 100 * 1000,
+            0 if close else int(100 * self.FACTOR),
             gripper_effort=1000,
             gripper_code=0x01,
             set_zero=0,
@@ -178,53 +238,76 @@ class CtrlByPiperSDK(CtrlBase):
         self.piper.DisconnectPort()
         print("Piper arm disabled.")
 
-    @staticmethod
-    def _euler2quat(euler_angles: list[float]) -> np.ndarray:
+    def set_move_mode(self, move_mode_end_pose: bool, timeout: int = 5):
         """
-        将欧拉角转换为四元数
-        :param euler_angles: 欧拉角 [roll, pitch, yaw], 单位为角度
-        :return: 四元数 [qx, qy, qz, qw]
+        切换到末端执行器位姿控制模式
+        :param timeout: 超时时间（秒）
         """
-        roll, pitch, yaw = np.radians(euler_angles)
-        cy = np.cos(yaw * 0.5)
-        sy = np.sin(yaw * 0.5)
-        cp = np.cos(pitch * 0.5)
-        sp = np.sin(pitch * 0.5)
-        cr = np.cos(roll * 0.5)
-        sr = np.sin(roll * 0.5)
-
-        qx = sr * cp * cy - cr * sp * sy
-        qy = cr * sp * cy + sr * cp * sy
-        qz = cr * cp * sy - sr * sp * cy
-        qw = cr * cp * cy + sr * sp * sy
-
-        return np.array([qx, qy, qz, qw], dtype=np.float32)
+        start = time.time()
+        # TODO: 看看mit模式是什么，据说响应速度更快
+        self.piper.MotionCtrl_2(
+            ctrl_mode=0x01,
+            move_mode=0x0 if move_mode_end_pose else 0x01,
+            move_spd_rate_ctrl=100,
+            is_mit_mode=0x00,
+        )
+        while True:
+            status = self.piper.GetArmStatus()
+            if status.arm_status.mode_feed == (0x00 if move_mode_end_pose else 0x01):
+                print(
+                    "Switched move mode to "
+                    + ("end pose control." if move_mode_end_pose else "joint control.")
+                )
+                break
+            if time.time() - start > timeout:
+                raise TimeoutError(
+                    "Failed to switch move mode within the specified timeout."
+                )
 
 
 if __name__ == "__main__":
-    piper_ctrl = CtrlByPiperSDK(
-        6,
-        joint_lower_limits=[-2.618, 0.0, -2.967, -1.745, -1.22, -2.0944],
-        joint_upper_limits=[2.618, 3.14, 0.0, 1.745, 1.22, 2.0944],
-    )
+    piper_ctrl = CtrlByPiperSDK()
     time.sleep(1)
     print("Initial joint positions:", piper_ctrl.get_joint())
     print("Initial gripper position:", piper_ctrl.get_gripper())
     print("Initial end-effector position:", piper_ctrl.get_ee_pos())
     print("Initial end-effector orientation (quaternion):", piper_ctrl.get_ee_quat())
-    piper_ctrl.set_joint(
-        {i: [0.5, 0.5, -0.7, 0.3, -0.2, 0.5, 0.08][i] for i in range(6)}
+    # piper_ctrl.set_joint(
+    #     {i: [0.5, 0.5, -0.7, 0.3, -0.2, 0.5, 0.08][i] for i in range(6)}
+    # )
+    # piper_ctrl.send_a_step()
+    # print("Updated joint positions:", piper_ctrl.get_joint())
+    # print("Updated gripper position:", piper_ctrl.get_gripper())
+    # print("Updated end-effector position:", piper_ctrl.get_ee_pos())
+    # print("Updated end-effector orientation (quaternion):", piper_ctrl.get_ee_quat())
+    # piper_ctrl.set_gripper(close=True)
+    # print("Gripper closed.")
+    # time.sleep(1)
+    # piper_ctrl.set_gripper(close=False)
+    # print("Gripper opened.")
+    # piper_ctrl.set_joint({i: [0.0, 0.0, -0.0, 0.0, 0.2, 0.0, 0.0][i] for i in range(6)})
+    # piper_ctrl.send_a_step()
+    # time.sleep(1)
+
+    piper_ctrl.reset(move_mode_end_pose=True)
+    piper_ctrl.set_ee_pose(
+        position=[0.3, 0.2, 0.2],
+        euler_angles=[0.0, 170.0, 0.0],
     )
-    piper_ctrl.send_a_step()
-    print("Updated joint positions:", piper_ctrl.get_joint())
-    print("Updated gripper position:", piper_ctrl.get_gripper())
+    print("Set end-effector pose.")
+    # time.sleep(1)
+    print(piper_ctrl.piper.GetArmStatus().arm_status)
     print("Updated end-effector position:", piper_ctrl.get_ee_pos())
     print("Updated end-effector orientation (quaternion):", piper_ctrl.get_ee_quat())
-    piper_ctrl.set_gripper(close=True)
-    print("Gripper closed.")
-    time.sleep(1)
-    piper_ctrl.set_gripper(close=False)
-    print("Gripper opened.")
-    piper_ctrl.set_joint({i: [0.0, 0.0, -0.0, 0.0, 0.2, 0.0, 0.0][i] for i in range(6)})
-    piper_ctrl.send_a_step()
-    time.sleep(1)
+
+    # 这两句不sleep好像到不了
+    piper_ctrl.set_ee_pose(
+        position=[0.3, 0.2, 0.2],
+        euler_angles=[0.0, 170.0, 60.0],
+    )
+    piper_ctrl.set_ee_pose(
+        position=[0.3, 0.2, 0.3],
+        euler_angles=[0.0, 120.0, 60.0],
+    )
+
+    del piper_ctrl  # 确保在测试结束时销毁对象
