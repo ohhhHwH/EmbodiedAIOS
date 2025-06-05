@@ -48,8 +48,8 @@ class VLMMapperNode(Node):
         )
 
         # ---------- 其他 ----------
-        self.tf_buffer = tf2_ros.Buffer()
-        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
+        # self.tf_buffer = tf2_ros.Buffer()
+        # self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
         self.vlmclient = Ark(api_key=os.getenv('ARK_API_KEY'))
         self.get_logger().info("📸 VLM 图像识别与坐标记录节点启动")
 
