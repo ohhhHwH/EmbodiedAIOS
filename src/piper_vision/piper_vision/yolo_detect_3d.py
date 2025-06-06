@@ -140,7 +140,8 @@ class YoloRos2(Node):
         threading.Thread(target=self.yolo_main, daemon=True).start()
 
         # map.txt
-        self.f = open("map.txt", "w")  # 可换为 "a" 追加模式
+        self.f = None
+        # self.f = open("map.txt", "w")  # 可换为 "a" 追加模式
         self.written_names = set()
 
         self.get_logger().info("YoloRos2 node init.")
@@ -401,8 +402,8 @@ class YoloRos2(Node):
             all_object_pos.heights.append(abs(world_y2 - world_y1))
 
             # 输出检测到的物体到文件
-            for name, point in zip(all_object_pos.names, all_object_pos.points):
-                self.write_unique_point(name, point)
+            # for name, point in zip(all_object_pos.names, all_object_pos.points):
+            #     self.write_unique_point(name, point)
 
             if name == self.interest: 
                 object_pos = ObjectPos()

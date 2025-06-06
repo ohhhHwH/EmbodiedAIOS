@@ -2,7 +2,7 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
 from std_msgs.msg import Empty          # 触发器消息类型，可替换为你需要的类型
-
+from std_srvs.srv import Empty as srcEmpty
 import json
 import cv2
 from cv_bridge import CvBridge
@@ -33,22 +33,65 @@ class VLMMapperNode(Node):
         self.latest_data: Dict[str, Any] | None = None  # 存 parse_object_points 结果
 
         # ---------- 订阅 ----------
-        self.image_sub = self.create_subscription(
+        self._image_sub = self.create_subscription(
             Image, '/camera/color/image_raw', self.image_callback, 10
         )
-        self.subscription = self.create_subscription(
+        self._points_sub = self.create_subscription(
             AllObjectPos, '/piper_vision/all_object_points',
             self.parse_object_points, 10
         )
-        self.trigger_sub = self.create_subscription(
+        self._trigger_sub = self.create_subscription(
             Empty, '/detection_trigger', self.on_trigger, 10
         )
-    
+
+        self._map_capture_trigger = self.create_service(
+            srcEmpty, '/piper_vision/map_capture', self.map_capture_trigger
+        )
+
         # ---------- 其他 ----------
         if not os.getenv('ARK_API_KEY'):
             raise RuntimeError("请设置环境变量 ARK_API_KEY")
         self.vlmclient = Ark(api_key=os.getenv('ARK_API_KEY'))
         self.get_logger().info("📸 VLM 图像识别与坐标记录节点启动")
+
+    def map_capture_trigger(self, request, response):
+        self.get_logger().info("📸 触发构建语义地图，开始处理...")
+        if not (self.latest_img_path and self.latest_data):
+            self.get_logger().warn("⚠️ 触发时缺少最新图像或目标数据，忽略")
+            return response
+        vlm_result = self.call_doubao_rm_dup(self.latest_img_path)
+        if vlm_result is None:
+            self.get_logger().error("❌ VLM 识别失败")
+            return response
+        # 根据vlm_result，过滤objects中的东西
+        self.get_logger().debug("过滤前： %s" % str(self.latest_data["objects"]))
+        filtered_objects = [obj for obj in self.latest_data["objects"] if obj["name"] in vlm_result]
+        self.get_logger().debug("过滤后： %s" % str(self.latest_data["objects"]))
+
+        existing_data = {}
+
+        os.makedirs("map", exist_ok=True)
+        file_path = "map/map.json"
+        if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    existing_data = json.load(f)
+            except json.JSONDecodeError:
+                print(f"Warning: '{file_path}' is not a valid JSON file or is empty. Starting with an empty map.")
+                existing_data = {}
+
+        for obj in filtered_objects:
+            name = obj["name"]
+            position = obj["position"]
+            existing_data[name] = [position["x"], position["y"]]
+
+        try:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(existing_data, f, indent=4, ensure_ascii=False)
+            print(f"Successfully appended data to '{file_path}'.")
+        except IOError as e:
+            print(f"Error writing to file '{file_path}': {e}")
+        return response
 
     # ------------------------------------------------------------------
     # ① 图像缓存：每到一帧就立即保存，但只保存最新一张
@@ -100,10 +143,10 @@ class VLMMapperNode(Node):
             self.get_logger().error("❌ VLM 识别失败")
             return
         # 根据vlm_result，过滤objects中的东西
-        self.get_logger().info("过滤前： %s" % str(self.latest_data["objects"]))
+        self.get_logger().debug("过滤前： %s" % str(self.latest_data["objects"]))
         filtered_objects = [obj for obj in self.latest_data["objects"] if obj["name"] in vlm_result]
         self.latest_data["objects"] = filtered_objects
-        self.get_logger().info("过滤后： %s" % str(self.latest_data["objects"]))
+        self.get_logger().debug("过滤后： %s" % str(self.latest_data["objects"]))
 
         # 2) 合并两路结果
         record = {
@@ -172,5 +215,5 @@ class VLMMapperNode(Node):
 def main(args=None):
     rclpy.init(args=args)
     node = VLMMapperNode()
-    rclpy.spin(node)
+    rclpy.spin(node) # 回调函数默认顺序执行
     rclpy.shutdown()
