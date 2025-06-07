@@ -13,7 +13,7 @@ import os
 class HCSR04Node(Node):
     def __init__(self):
         super().__init__("hc_sr04_node")
-        self.get_logger().info("Initializing HCSR04Node...")
+        self.get_logger().info("initializing hc_sr04_node...")
 
         # Load sensor configurations from YAML file in the same directory
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -98,12 +98,12 @@ def main(args=None):
     node = HCSR04Node()
 
     try:
-        node.get_logger().info("Starting to spin node...")
+        node.get_logger().info("starting to spin node...")
         rclpy.spin(node)
     except KeyboardInterrupt:
-        node.get_logger().info("Keyboard interrupt received")
+        node.get_logger().info("keyboard interrupt received")
     except Exception as e:
-        node.get_logger().error(f"Exception occurred: {str(e)}")
+        node.get_logger().error(f"exception occurred: {str(e)}")
     finally:
         node.cleanup()
         node.destroy_node()
