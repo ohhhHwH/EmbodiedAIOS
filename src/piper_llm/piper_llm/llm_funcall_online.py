@@ -1,22 +1,21 @@
 from openai import OpenAI
 import time
 
-from func_tools_arm import ArmControl
-from func_tools_arm import arm_get_status, arm_move, arm_stop, arm_grab
+from llm_funcall_api.func_tools_arm import ArmControl
+from llm_funcall_api.func_tools_car import CarControl
+from llm_funcall_api.func_tools_audio import AudioSensor
+from llm_funcall_api.func_tools_map import MapSensor
 
-from func_tools_car import CarControl
-from func_tools_car import car_get_status, car_move, car_stop
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import String
+import requests
+import json
+from piper_msgs.srv import PlayText
+from llm_funcall_online import OllamaChat
 
-from func_tools_vision import VisionSensor
-from func_tools_vision import image_capture, object_detection, object_find
 
-from func_tools_audio import AudioSensor
-from func_tools_audio import audio_capture, speech_to_text, text_to_speech
-
-from func_tools_map import MapSensor
-from func_tools_map import semantic_map_update, semantic_map_query
-
-# 提示词
+# system prompt for CN
 system_prompt_cn = '''
 [系统角色]
 你是一个机器人控制中枢，唯一职责是解析用户指令并精准调度工具函数。你需严格遵循以下规则:
@@ -68,9 +67,9 @@ car_control = None
 vision_sensor = None
 audio_sensor = None
 map_sensor = None
+llm_client = None
 
-
-# OpenAIClient类 用于与OpenAI API进行交互 提供了初始化、发送消息和处理函数调用的功能
+# class of OpenAIClient , used to interact with OpenAI API
 class OpenAIClient:
     # 初始化
     def __init__(self, api_key, base_url, model, system_prompt, tools=None):
@@ -122,7 +121,27 @@ class OpenAIClient:
         self.messages.append(response.choices[0].message)
         return response.choices[0].message
 
-# 提取message字符串中的信息，获取[Funcall]的相关内容并整理成tool_calls的格式
+class LLMNode(Node):
+    def __init__(self, api_key):
+        super().__init__('llm_node')
+        self.client = init_func_call(
+            api_key,
+            base_url="https://api.deepseek.com",
+            model="deepseek-chat"
+        )
+        self.publisher_ = self.create_publisher(String, 'llm_response', 10)
+        self.subscription = self.create_subscription(
+            String,
+            'llm_request',
+            self.listener_callback,
+            10
+        )
+        
+    def listener_callback(self, msg):
+        funcall_online(msg.data)
+        return 
+
+# use this function to format the message content
 def message_format(message):
 
     tool_calls = []
@@ -163,7 +182,7 @@ def message_format(message):
             })
     return tool_calls
 
-# 对message.content一行一行检测，看段落中是否有[Function Call]，如果有则返回True，否则返回False
+# use this function to judge whether the message contains a tool call
 def judge_tool_call(message):
     message = message.content
     message_split = message.split("\n")
@@ -172,54 +191,57 @@ def judge_tool_call(message):
             return True
     return False
 
-# 初始化函数调用
-def init_func_call():
+def init_func_call(api_key, base_url="https://api.deepseek.com", model="deepseek-chat"):
     global system_prompt_cn
     global arm_control
     global car_control
     global vision_sensor
     global audio_sensor
     global map_sensor
+    global llm_client
     
     # 初始化类
-    arm_control = ArmControl(
-
-        arm_status=arm_get_status,
-        arm_move=arm_move,
-        arm_stop=arm_stop,
-        arm_grab=arm_grab
-    )
-    car_control = CarControl(
-
-        car_status=car_get_status,
-        car_move=car_move,
-        car_stop=car_stop
-    )
-    vision_sensor = VisionSensor(
-
-        vision_image_get=image_capture,
-        vision_object_find=object_find,
-        vision_object_detection=object_detection
-    )
-    audio_sensor = AudioSensor(
-        audio_capture=audio_capture,
-        audio_speech_to_text=speech_to_text,
-        audio_text_to_speech=text_to_speech
-    )
-    map_sensor = MapSensor(
-
-        map_update=semantic_map_update,
-        map_query_class=semantic_map_query,
-        map_query_object=semantic_map_query,
-        map_visualize=None
-    )
+    arm_control = ArmControl()
+    car_control = CarControl()
+    audio_sensor = AudioSensor()
+    map_sensor = MapSensor()
 
     # 通过get_func_tools_info()方法获取工具信息并拼接到system_prompt_cn中
     system_prompt_cn += arm_control.get_func_tools_info()
     system_prompt_cn += car_control.get_func_tools_info()
-    system_prompt_cn += vision_sensor.get_func_tools_info()
     system_prompt_cn += audio_sensor.get_func_tools_info()
     system_prompt_cn += map_sensor.get_func_tools_info()
+
+    api_key = api_key
+    base_url = base_url
+    model = model
+    
+    # 初始化OpenAIClient
+    llm_client = OpenAIClient(
+        api_key=api_key,
+        base_url=base_url,
+        model=model,
+        system_prompt=system_prompt_cn,
+        tools=None
+    )
+    
+    return llm_client
+    
+funcName_2_CN = {   
+    "arm_move": "机械臂移动",
+    "arm_grab": "机械臂抓取",
+    "arm_stop": "机械臂停止",
+    "car_move": "小车移动",
+    "car_stop": "小车停止",
+    "car_status": "报告小车状态",
+    "audio_capture": "音频采集",
+    "audio_speech_to_text": "语音转文本",
+    "audio_text_to_speech": "文本转语音",
+    "map_update": "地图更新",
+    "map_query_class": "查询语义地图",
+    "map_query_object": "查询物体",
+    "map_visualize": "地图可视化",                
+}
 
 # func_call函数 用于处理大模型生成的调用函数
 def func_call(tool_calls):
@@ -235,7 +257,9 @@ def func_call(tool_calls):
             # print(f"Function arguments: {funcArguments}")
             
             # 调用语音函数,播放当前函数名称
-            audio_sensor.text_to_speech(f"调用函数名称为:{funcName}")
+            CN_funcName = funcName_2_CN.get(funcName, funcName)
+            
+            audio_sensor.text_to_speech(f"{CN_funcName}")
             
             content = ""
             
@@ -274,7 +298,8 @@ def func_call(tool_calls):
                 
         # 如果函数调用中含有false / error / 失败 / 错误 等信息则跳出循环
         if "false" in content or "error" in content or "失败" in content or "错误" in content:
-            print(f"{function["name"]} 函数调用失败，跳出循环")
+            funcName = function["name"]  
+            print(f"{funcName} 函数调用失败，跳出循环")
             break
         
     # 如果分条加入的话则下次调用只针对最晚的content
@@ -282,41 +307,29 @@ def func_call(tool_calls):
     content_append = content_append.replace(";", ":", 1)
     return [{"role": "user", "content": content_append}]  
 
-def main():
-    # 初始化函数调用
-    init_func_call()
-    
-    api_key = "sk-11a8684c26aa48f9bf6a9f413fd8117f"
-    base_url = "https://api.deepseek.com"
-    # model="deepseek-r1:14b"
-    model = "deepseek-chat"
-    
-    questions0 = "去厨房拿一个红色的杯子"
-    questions1 = "去厨房拿一个红色的杯子"
-    questions2 = "请你简单介绍下你自己"
-    questions3 = "请你对当前楼层进行建图，每次都查询语义地图找到地图边界，走到边界后扫描,最后回到原点"
-    questions4 = "帮我找到303房间，在建立好的地图上，检索水杯，得到坐标点，然后返回"
-    questions5 = "前进一米"
-    
+def funcall_online(request=None):
+    questions_test = request
+    if(questions_test is None):
+        questions0 = "先到自动售货机取货,然后送到曹老师办公室,最后返回303办公室"
+        questions1 = "先到办公桌取货,然后送到沙发,最后返回303门口"
+        questions2 = "请你简单介绍下你自己"
+        questions3 = "请你对当前楼层进行建图，每次都查询语义地图找到地图边界，走到边界后扫描,最后回到原点"
+        questions4 = "帮我找到303房间，在建立好的地图上，检索水杯，得到坐标点，然后返回"
+        questions5 = "前进一米"
+        questions6 =  "返回梅老师办公室"
+        questions7 = "先到自动售货机取货,然后送到电梯口，最后返回303办公室"
+
+        questions_test = questions7
+        questions_get = audio_sensor.audio_capture(10)
+        print("识别到的语音是:" + questions_get)
+        audio_sensor.text_to_speech("识别到的语音是:" + questions_test)
+        
     # 开始计时
     start_time = time.time()
     
-    # 初始化OpenAIClient
-    client = OpenAIClient(
-        api_key=api_key,
-        base_url=base_url,
-        model=model,
-        system_prompt=system_prompt_cn,
-        tools=None
-    )
+    client = llm_client
 
-    
-    print("初始化完成，开始执行用户指令")
-    
-    message = client.send_messages([{"role": "user", "content": questions0}])
-    
-    
-    
+    message = client.send_messages([{"role": "user", "content": questions_test}])
     # 将message的内容保存到文件中
     with open("message.txt", "a") as f:
         f.write(message.content)
@@ -342,7 +355,20 @@ def main():
     end_time = time.time()
     print(f"Time taken: {end_time - start_time} seconds")
 
+def main(args=None):
+    rclpy.init(args=args)  # 初始化ROS2客户端库
+    node = LLMNode("LLM_funcall_node", api_key="sk-")  # 创建节点实例
+    try:
+        rclpy.spin(node)  # 保持节点运行
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()  # 销毁节点
+        rclpy.shutdown()  # 关闭ROS2
 
-    
 if __name__ == "__main__":
+    # 测试代码
+    # init_func_call()
+    # funcall_online()
+    
     main()
